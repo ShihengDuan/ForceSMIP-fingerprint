@@ -21,12 +21,12 @@ elif variable=='monmaxpr':
     cmip_var = 'pr'
     eof_start = 1979
     start_year = 1980
-    end_year = 2018
+    end_year = 2020
 elif variable=='pr':
     cmip_var = 'pr'
     eof_start = 1979
     start_year = 1983
-    end_year = 2018
+    end_year = 2020
 
 print(variable, ' ', start_year, ' ', end_year, ' ', eof_start)
 with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-False-month-True-unforced-False-joint-False', 'rb') as pfile:
@@ -81,10 +81,11 @@ else:
     missing_xa = xr.where(np.isnan(mask.tas.isel(time=0)), np.nan, 1)
 
 gpcp = []
-for i in range(1983, 2019):
+for i in range(1983, 2021):
     data = xc.open_dataset('/p/lustre3/shiduan/GPCP/regrid/'+str(i)+'.nc')
     gpcp.append(data)
 gpcp = xr.concat(gpcp, dim='time')
+print(gpcp.time)
 gpcp = gpcp["__xarray_dataarray_variable__"].transpose('time', 'lon', 'lat')
 gpcp = gpcp.fillna(0)
 gpcp_anomaly = gpcp.groupby(gpcp.time.dt.month)-gpcp.groupby(gpcp.time.dt.month).mean(dim='time')

@@ -21,12 +21,12 @@ elif variable=='monmaxpr':
     cmip_var = 'pr'
     eof_start = 1979
     start_year = 1980
-    end_year = 2018
+    end_year = 2020
 elif variable=='pr':
     cmip_var = 'pr'
     eof_start = 1979
     start_year = 1983
-    end_year = 2018
+    end_year = 2020
 
 print(variable, ' ', start_year, ' ', end_year, ' ', eof_start)
 with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-False-month-True-unforced-False-joint-False', 'rb') as pfile:
@@ -80,10 +80,10 @@ else:
     mask = xr.open_dataset('../nomask.nc')
     missing_xa = xr.where(np.isnan(mask.tas.isel(time=0)), np.nan, 1)
 
-mswep = xc.open_dataset('/p/lustre3/shiduan/MSWEP/MSWEP-V280-Past-nogauge-v20231102-monpr-forcesmip.nc')
+mswep = xc.open_dataset('/p/lustre3/shiduan/MSWEP/MSWEP-V280-Past-v20231102-monpr-forcesmip.nc')
 mswep = mswep['__xarray_dataarray_variable__'].transpose('time', 'lon', 'lat')
 mswep = mswep.fillna(0)
-mswep = mswep.sel(time=slice('1983-01-01', '2019-01-01'))
+mswep = mswep.sel(time=slice('1983-01-01', '2021-01-01'))
 print(mswep.shape, ' ', mswep.time.data[-1])
 mswep_anomaly = mswep.groupby(mswep.time.dt.month)-mswep.groupby(mswep.time.dt.month).mean(dim='time')
 mswep_unforced = mswep_anomaly.groupby(mswep_anomaly.time.dt.month)/unforced_std['pr']
