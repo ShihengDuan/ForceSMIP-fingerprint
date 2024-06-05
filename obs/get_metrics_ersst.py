@@ -5,11 +5,28 @@ import xarray as xr
 import numpy as np
 import os
 import pickle
-
+import sys
 # principal component analysis
 from eofs.xarray import Eof
 from utils import get_slope
+import argparse
+def get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--pacific', type=int, default=0)
+    parser.add_argument('--atlantic', type=int, default=0)
+    parser.add_argument('--late', type=int, default=0)
+    args = vars(parser.parse_args())
+    return args
 
+args = get_args()
+pacific = args['pacific']
+pacific = pacific>0
+atlantic = args['atlantic']
+atlantic = atlantic>0
+late = args['late']
+late = late>0
+if pacific and atlantic:
+    sys.exit("NO Such combination")
 variable = 'tos'
 
 if variable == 'tos':
@@ -17,6 +34,9 @@ if variable == 'tos':
     eof_start = 1950
     start_year = 1950
     end_year = 2021
+    if late:
+        start_year = 1979
+        eof_start = 1979
 elif variable=='monmaxpr':
     cmip_var = 'pr'
     eof_start = 1979
@@ -29,42 +49,85 @@ elif variable=='pr':
     end_year = 2018
 
 print(variable, ' ', start_year, ' ', end_year, ' ', eof_start)
-with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-False-month-True-unforced-False-joint-False', 'rb') as pfile:
-    record = pickle.load(pfile)
-solver_list_month = record['solver']
-unforced_list_month = record['unforced_list']
-pc_month = record['pc']
-
-with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-True-unforced-False-joint-False', 'rb') as pfile:
-    record = pickle.load(pfile)
-solver_list_month_stand = record['solver']
-unforced_list_month_stand = record['unforced_list']
-pc_month_stand = record['pc']
-
-with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-False-month-False-unforced-False-joint-False', 'rb') as pfile:
-    record = pickle.load(pfile)
-solver = record['solver']
-unforced_list = record['unforced_list']
-pc_list = record['pc']
-
-with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-False-unforced-False-joint-False', 'rb') as pfile:
-    record = pickle.load(pfile)
-solver_stand = record['solver']
-unforced_list_stand = record['unforced_list']
-pc_list_stand = record['pc']
-
-with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-True-unforced-True-joint-False', 'rb') as pfile:
+if pacific:
+    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-True-unforced-True-joint-False-Pacific'
+elif atlantic:
+    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-True-unforced-True-joint-False-Atlantic'
+else:
+    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-True-unforced-True-joint-False'
+with open(path, 'rb') as pfile:
     record = pickle.load(pfile)
 solver_list_month_unforced = record['solver']
 unforced_list_month_unforced = record['unforced_list']
 pc_month_unforced = record['pc']
 unforced_std = record['unforced_std'] # for obs normalization
+del record
 
-with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-False-unforced-True-joint-False', 'rb') as pfile:
+if pacific:
+    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-False-unforced-True-joint-False-Pacific'
+elif atlantic:
+    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-False-unforced-True-joint-False-Atlantic'
+else:
+    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-False-unforced-True-joint-False'
+with open(path, 'rb') as pfile:
     record = pickle.load(pfile)
 solver_list_unforced = record['solver']
 unforced_list_unforced = record['unforced_list']
 pc_unforced = record['pc']
+del record
+
+if pacific:
+    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-False-month-True-unforced-False-joint-False-Pacific'
+elif atlantic:
+    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-False-month-True-unforced-False-joint-False-Atlantic'
+else:
+    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-False-month-True-unforced-False-joint-False'
+with open(path, 'rb') as pfile:
+    record = pickle.load(pfile)
+solver_list_month = record['solver']
+unforced_list_month = record['unforced_list']
+pc_month = record['pc']
+del record
+
+if pacific:
+    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-True-unforced-False-joint-False-Pacific'
+elif atlantic:
+    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-True-unforced-False-joint-False-Atlantic'
+else:
+    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-True-unforced-False-joint-False'
+with open(path, 'rb') as pfile:
+    record = pickle.load(pfile)
+solver_list_month_stand = record['solver']
+unforced_list_month_stand = record['unforced_list']
+pc_month_stand = record['pc']
+del record
+
+if pacific:
+    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-False-month-False-unforced-False-joint-False-Pacific'
+elif atlantic:
+    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-False-month-False-unforced-False-joint-False-Atlantic'
+else:
+    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-False-month-False-unforced-False-joint-False'
+with open(path, 'rb') as pfile:
+    record = pickle.load(pfile)
+solver = record['solver']
+unforced_list = record['unforced_list']
+pc_list = record['pc']
+del record
+
+if pacific:
+    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-False-unforced-False-joint-False-Pacific'
+elif atlantic:
+    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-False-unforced-False-joint-False-Atlantic'
+else:
+    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-False-unforced-False-joint-False'
+with open(path, 'rb') as pfile:
+    record = pickle.load(pfile)
+solver_stand = record['solver']
+unforced_list_stand = record['unforced_list']
+pc_list_stand = record['pc']
+del record
+
 
 pc_all = xr.concat(pc_month, dim='time')
 pc_all = pc_all.sortby('time')
@@ -76,6 +139,14 @@ pc_all_unforced = pc_all_unforced.sortby('time')
 if variable=='tos':
     mask = xr.open_dataset('../maskland.nc')
     missing_xa = xr.where(np.isnan(mask.tos.isel(time=0)), np.nan, 1)
+    if pacific:
+        missing_xa = missing_xa.sel(lon=slice(150, 280))
+    if atlantic:
+        missing_data_maskx = xr.open_dataset('../maskland.nc')
+        missing_data_maskx = xc.swap_lon_axis(missing_data_maskx, to=(-180, 180))
+        missing_data_maskx = missing_data_maskx.sel(lon=slice(-80, 80))
+        missing_data = np.where(np.isnan(missing_data_maskx.tos.squeeze().transpose('lon', 'lat')), np.nan, 1)
+        missing_xa = xr.where(np.isnan(missing_data_maskx.tos.isel(time=0)), np.nan, 1)
 else:
     mask = xr.open_dataset('../nomask.nc')
     missing_xa = xr.where(np.isnan(mask.tas.isel(time=0)), np.nan, 1)
@@ -94,10 +165,18 @@ for t in ersst.time.data:
     day = t.day
     time.append(DatetimeGregorian(year=year, month=month, day=day))
 ersst['time'] = time
+if pacific:
+    ersst = ersst.sel(lon=slice(150, 280))
+if atlantic:
+    ersst = xc.swap_lon_axis(ersst, to=(-180, 180))
+    ersst = ersst.sel(lon=slice(-80, 80))
 ersst = ersst["sst"].isel(lev=0).transpose('time', 'lon', 'lat')
-ersst = ersst.sel(time=slice('1950-01-01', '2022-01-01'))
+ersst = ersst.sel(time=slice('1950-01-01', '2021-12-31'))
+if late:
+    ersst = ersst.sel(time=slice('1979-01-01', '2021-12-31'))
 print(ersst.shape, ' ', ersst.time.data[-1])
 ersst = ersst.fillna(0)
+
 ersst_anomaly = ersst.groupby(ersst.time.dt.month)-ersst.groupby(ersst.time.dt.month).mean(dim='time')
 ersst_unforced = ersst_anomaly.groupby(ersst_anomaly.time.dt.month)/unforced_std['tos']
 ersst_stand = ersst_anomaly.groupby(ersst_anomaly.time.dt.month)/ersst_anomaly.groupby(ersst_anomaly.time.dt.month).std(dim='time')
@@ -247,7 +326,14 @@ p = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/ERSST/'
 
 results_month = calculate_metrics(obs=ersst_anomaly,
     solver_list=solver_list_month, unforced_list=unforced_list_month, pc_series=pc_all, month=True)
-path = p+variable+'-metrics-stand-False-month-True-unforced-False-joint-False'
+if pacific:
+    path = p+variable+'-metrics-stand-False-month-True-unforced-False-joint-False-Pacific'
+elif atlantic:
+    path = p+variable+'-metrics-stand-False-month-True-unforced-False-joint-False-Atlantic'
+else:    
+    path = p+variable+'-metrics-stand-False-month-True-unforced-False-joint-False'
+if late:
+    path = path+'-late'
 with open(path, 'wb') as pfile:
     pickle.dump(results_month, pfile)
 del results_month
@@ -277,23 +363,57 @@ results_raw= calculate_metrics(obs=ersst_anomaly,
 
 
 
-
-path = p+variable+'-metrics-stand-True-month-True-unforced-False-joint-False'
+if pacific:
+    path = p+variable+'-metrics-stand-True-month-True-unforced-False-joint-False-Pacific'
+elif atlantic:
+    path = p+variable+'-metrics-stand-True-month-True-unforced-False-joint-False-Atlantic'
+else:
+    path = p+variable+'-metrics-stand-True-month-True-unforced-False-joint-False'
+if late:
+    path = path+'-late'
 with open(path, 'wb') as pfile:
     pickle.dump(results_month_stand, pfile)
 
-path = p+variable+'-metrics-stand-True-month-True-unforced-True-joint-False'
+if pacific:
+    path = p+variable+'-metrics-stand-True-month-True-unforced-True-joint-False-Pacific'
+elif atlantic:
+    path = p+variable+'-metrics-stand-True-month-True-unforced-True-joint-False-Atlantic'
+else:
+    path = p+variable+'-metrics-stand-True-month-True-unforced-True-joint-False'
+if late:
+    path = path+'-late'
 with open(path, 'wb') as pfile:
     pickle.dump(results_month_unforced, pfile)
 
-path = p+variable+'-metrics-stand-False-month-False-unforced-False-joint-False'
+if pacific:
+    path = p+variable+'-metrics-stand-False-month-False-unforced-False-joint-False-Pacific'
+elif atlantic:
+    path = p+variable+'-metrics-stand-False-month-False-unforced-False-joint-False-Atlantic'
+else:
+    path = p+variable+'-metrics-stand-False-month-False-unforced-False-joint-False'
+if late:
+    path = path+'-late'
 with open(path, 'wb') as pfile:
     pickle.dump(results_raw, pfile)
 
-path = p+variable+'-metrics-stand-True-month-False-unforced-False-joint-False'
+if pacific:
+    path = p+variable+'-metrics-stand-True-month-False-unforced-False-joint-False-Pacific'
+if atlantic:
+    path = p+variable+'-metrics-stand-True-month-False-unforced-False-joint-False-Atlantic'
+else:
+    path = p+variable+'-metrics-stand-True-month-False-unforced-False-joint-False'
+if late:
+    path = path+'-late'
 with open(path, 'wb') as pfile:
     pickle.dump(results_stand, pfile)
 
-path = p+variable+'-metrics-stand-True-month-False-unforced-True-joint-False'
+if pacific:
+    path = p+variable+'-metrics-stand-True-month-False-unforced-True-joint-False-Pacific'
+if atlantic:
+    path = p+variable+'-metrics-stand-True-month-False-unforced-True-joint-False-Atlantic'
+else:
+    path = p+variable+'-metrics-stand-True-month-False-unforced-True-joint-False'
+if late:
+    path = path+'-late'
 with open(path, 'wb') as pfile:
     pickle.dump(results_unforced, pfile)

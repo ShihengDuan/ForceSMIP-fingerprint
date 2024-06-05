@@ -19,113 +19,56 @@ import argparse
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--variable', type=str, choices=['monmaxpr', 'pr', 'tos'])
-    parser.add_argument('--late', type=int, default=0)
+    parser.add_argument('--variable', type=str, choices=['monmaxpr', 'pr'])
+    parser.add_argument('--start_year', type=int, default=1979)
+    parser.add_argument('--end_year', type=int, default=2022)
+    # parser.add_argument('--eof_start', type=int, default=1979)
     args = vars(parser.parse_args())
     return args
 
 args = get_args()
 variable = args['variable']
-late = args['late']
 # start_year = args['start_year']
 # end_year = args['end_year']
-if variable == 'tos':
-    cmip_var = 'tos'
-    eof_start = 1950
-    start_year = 1950
-    end_year = 2021
-    if late:
-        start_year = 1979
-        eof_start = 1979
-elif variable=='monmaxpr':
+
+if variable=='monmaxpr':
     cmip_var = 'pr'
     eof_start = 1979
     start_year = 1980
-    end_year = 2020
+    end_year = 2016
 elif variable=='pr':
     cmip_var = 'pr'
     eof_start = 1979
     start_year = 1983
-    end_year = 2020
+    end_year = 2016
 
 print(variable, ' ', start_year, ' ', end_year, ' ', eof_start)
-with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-False-month-True-unforced-False-joint-False', 'rb') as pfile:
-    record = pickle.load(pfile)
-solver_list_month = record['solver']
-unforced_list_month = record['unforced_list']
-pc_month = record['pc']
-all_pcs_month = record['all_pcs']
 
-with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-True-unforced-False-joint-False', 'rb') as pfile:
-    record = pickle.load(pfile)
-solver_list_month_stand = record['solver']
-unforced_list_month_stand = record['unforced_list']
-pc_month_stand = record['pc']
-all_pcs_month_stand = record['all_pcs']
+maskfile = "/p/lustre1/shiduan/REGEN/REGEN_mask_forcesmip.nc"
+mask = xr.open_dataset(maskfile)
+missing_xa = xr.where(np.isnan(mask.p), np.nan, 1)
 
-with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-False-month-False-unforced-False-joint-False', 'rb') as pfile:
-    record = pickle.load(pfile)
-solver = record['solver']
-unforced_list = record['unforced_list']
-pc_list = record['pc']
-all_pcs = record['all_pcs']
-
-with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-False-unforced-False-joint-False', 'rb') as pfile:
-    record = pickle.load(pfile)
-solver_stand = record['solver']
-unforced_list_stand = record['unforced_list']
-pc_list_stand = record['pc']
-all_pcs_stand = record['all_pcs']
-
-with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-True-unforced-True-joint-False', 'rb') as pfile:
-    record = pickle.load(pfile)
-solver_list_month_unforced = record['solver']
-unforced_list_month_unforced = record['unforced_list']
-pc_month_unforced = record['pc']
-all_pcs_month_unforced = record['all_pcs']
-
-with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-False-unforced-True-joint-False', 'rb') as pfile:
-    record = pickle.load(pfile)
-solver_list_unforced = record['solver']
-unforced_list_unforced = record['unforced_list']
-pc_unforced = record['pc']
-all_pcs_unforced = record['all_pcs']
-
-
-pc_all = xr.concat(pc_month, dim='time')
-pc_all = pc_all.sortby('time')
-
-pc_all_stand = xr.concat(pc_month_stand, dim='time')
-pc_all_stand = pc_all_stand.sortby('time')
-
-pc_all_unforced = xr.concat(pc_month_unforced, dim='time')
-pc_all_unforced = pc_all_unforced.sortby('time')
-
-
-
-if variable=='tos':
-    mask = xr.open_dataset('../maskland.nc')
-    missing_xa = xr.where(np.isnan(mask.tos.isel(time=0)), np.nan, 1)
-else:
-    mask = xr.open_dataset('../nomask.nc')
-    missing_xa = xr.where(np.isnan(mask.tas.isel(time=0)), np.nan, 1)
-
-
-def calculate_metrics_cmip(solver_list, cmip_pcs, unforced_list, pc_series, month=False):
+def calculate_metrics_cmip(solver_list, cmip_pcs, unforced_list, pc_series, month=False, flip=False):
+    print('Start_year: ', start_year)
     pc1 = pc_series.isel(mode=0).sel(time=slice(str(start_year)+'-01-01', str(end_year+1)+'-01-01'))
+    if flip:
+        pc1 = -pc1
     timescales = np.arange(12, (end_year+1-start_year)*12)
     pc_max = pc1.max().data
     pc_min = pc1.min().data
-    print(pc_max, ' ', pc_min)
+    print(pc_max, ' ', pc_min, ' ', len(pc1))
     # normalize cmip ensemble pcs. 
     cmip_psedupcs = []
     time = np.arange(len(pc1))
     for model_pc in cmip_pcs:
+        # print(len(model_pc), model_pc.shape, model_pc.time.data[-1])
         model_pc = model_pc.sel(time=slice(str(start_year)+'-01-01', str(end_year+1)+'-01-01')).isel(mode=0)
+        if flip:
+            model_pc = -model_pc
+        # print(len(model_pc), model_pc.shape, model_pc.time.data[-1], model_pc.time.data[0])
         model_pc = (model_pc-pc_min)/(pc_max-pc_min)
         model_pc = model_pc*2-1 # -1 to 1 
         cmip_psedupcs.append(model_pc)
-    
     noise_pcs = []
     for unforced in unforced_list:
         unforced = unforced[cmip_var].sel(time=slice(str(start_year)+'-01-01', str(end_year+1)+'-01-01'))
@@ -146,12 +89,16 @@ def calculate_metrics_cmip(solver_list, cmip_pcs, unforced_list, pc_series, mont
                 noise_month = noise_month.isel(mode=0)
                 noise_month = (noise_month-pc_min)/(pc_max-pc_min)
                 noise_month = noise_month*2-1
+                if flip:
+                    noise_month = -noise_month
                 noise_pcs.append(noise_month)
             else:
                 psd = solver_list[0].projectField(ds_in-ds_in.mean(dim='time'))
                 psd = psd.isel(mode=0)
                 psd = (psd-pc_max)/(pc_max-pc_min)
                 psd = psd*2-1
+                if flip:
+                    psd = -psd
                 noise_pcs.append(psd)
     # get noise strength
     
@@ -184,6 +131,8 @@ def calculate_metrics_cmip(solver_list, cmip_pcs, unforced_list, pc_series, mont
     
     # model 
     pc1 = pc_series.isel(mode=0).sel(time=slice(str(start_year)+'-01-01', str(end_year+1)+'-01-01'))
+    if flip:
+        pc1 = -pc1
     pc1_norm = (pc1-pc_min)/(pc_max-pc_min)
     pc1_norm = pc1_norm*2-1
     # loop over each timescale to compute the PC trend
@@ -206,10 +155,12 @@ def calculate_metrics_cmip(solver_list, cmip_pcs, unforced_list, pc_series, mont
     # get noise and signal
     model_results = {}
     for i, model_pcs in enumerate(cmip_psedupcs):
+        print('model_pcs: ', model_pcs.shape)
         model_signal = []
         model_sn = []
         for nyears in timescales:
             sample_inds = np.arange(0, nyears)
+            # print(nyears)
             # print(time[sample_inds].shape, model_pcs.isel(time=sample_inds).transpose('time', 'member'))
             m, b = np.polyfit(time[sample_inds], model_pcs.isel(time=sample_inds).transpose('time', 'member'), 1)
             # model_signal[nyears] = m # ensemble members
@@ -232,56 +183,90 @@ def calculate_metrics_cmip(solver_list, cmip_pcs, unforced_list, pc_series, mont
     }
     return results
 
+with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-False-month-True-unforced-False-joint-False-REGEN-mask', 'rb') as pfile:
+    record = pickle.load(pfile)
+solver_list_month = record['solver']
+unforced_list_month = record['unforced_list']
+pc_month = record['pc']
+all_pcs_month = record['all_pcs']
+pc_all = xr.concat(pc_month, dim='time')
+pc_all = pc_all.sortby('time')
 results_month = calculate_metrics_cmip(solver_list=solver_list_month, cmip_pcs=all_pcs_month, 
                                        unforced_list=unforced_list_month, pc_series=pc_all, month=True)
 
+with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-True-unforced-False-joint-False-REGEN-mask', 'rb') as pfile:
+    record = pickle.load(pfile)
+solver_list_month_stand = record['solver']
+unforced_list_month_stand = record['unforced_list']
+pc_month_stand = record['pc']
+all_pcs_month_stand = record['all_pcs']
+pc_all_stand = xr.concat(pc_month_stand, dim='time')
+pc_all_stand = pc_all_stand.sortby('time')
 results_month_stand = calculate_metrics_cmip(solver_list=solver_list_month_stand, cmip_pcs=all_pcs_month_stand, 
                                        unforced_list=unforced_list_month_stand, pc_series=pc_all_stand, month=True)
 
-results_month_unforced = calculate_metrics_cmip(solver_list=solver_list_month_unforced, cmip_pcs=all_pcs_month_unforced, 
-                                       unforced_list=unforced_list_month_unforced, pc_series=pc_all_unforced, month=True)
-
+with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-False-month-False-unforced-False-joint-False-REGEN-mask', 'rb') as pfile:
+    record = pickle.load(pfile)
+solver = record['solver']
+unforced_list = record['unforced_list']
+pc_list = record['pc']
+all_pcs = record['all_pcs']
+if variable=='pr':
+    flip=True
+else:
+    flip=False
 results_anomaly = calculate_metrics_cmip(solver_list=solver, cmip_pcs=all_pcs, 
-                                       unforced_list=unforced_list, pc_series=pc_list[0], month=False)
+                                       unforced_list=unforced_list, pc_series=pc_list[0], month=False, flip=flip)
 
+with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-False-unforced-False-joint-False-REGEN-mask', 'rb') as pfile:
+    record = pickle.load(pfile)
+solver_stand = record['solver']
+unforced_list_stand = record['unforced_list']
+pc_list_stand = record['pc']
+all_pcs_stand = record['all_pcs']
 results_stand = calculate_metrics_cmip(solver_list=solver_stand, cmip_pcs=all_pcs_stand, 
                                        unforced_list=unforced_list_stand, pc_series=pc_list_stand[0], month=False)
 
+with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-True-unforced-True-joint-False-REGEN-mask', 'rb') as pfile:
+    record = pickle.load(pfile)
+solver_list_month_unforced = record['solver']
+unforced_list_month_unforced = record['unforced_list']
+pc_month_unforced = record['pc']
+all_pcs_month_unforced = record['all_pcs']
+pc_all_unforced = xr.concat(pc_month_unforced, dim='time')
+pc_all_unforced = pc_all_unforced.sortby('time')
+results_month_unforced = calculate_metrics_cmip(solver_list=solver_list_month_unforced, cmip_pcs=all_pcs_month_unforced, 
+                                       unforced_list=unforced_list_month_unforced, pc_series=pc_all_unforced, month=True)
+
+with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-False-unforced-True-joint-False-REGEN-mask', 'rb') as pfile:
+    record = pickle.load(pfile)
+solver_list_unforced = record['solver']
+unforced_list_unforced = record['unforced_list']
+pc_unforced = record['pc']
+all_pcs_unforced = record['all_pcs']
 results_unforced = calculate_metrics_cmip(solver_list=solver_list_unforced, cmip_pcs=all_pcs_unforced, 
                                        unforced_list=unforced_list_unforced, pc_series=pc_unforced[0], month=False)
 
-path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-CMIP-metrics-stand-False-month-True-unforced-False-joint-False'
-if late:
-    path = path+'-late'
+path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-CMIP-metrics-stand-False-month-True-unforced-False-joint-False-REGEN-mask'
 with open(path, 'wb') as pfile:
     pickle.dump(results_month, pfile)
 
-path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-CMIP-metrics-stand-True-month-True-unforced-False-joint-False'
-if late:
-    path = path+'-late'
+path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-CMIP-metrics-stand-True-month-True-unforced-False-joint-False-REGEN-mask'
 with open(path, 'wb') as pfile:
     pickle.dump(results_month_stand, pfile)
 
-path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-CMIP-metrics-stand-True-month-True-unforced-True-joint-False'
-if late:
-    path = path+'-late'
+path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-CMIP-metrics-stand-True-month-True-unforced-True-joint-False-REGEN-mask'
 with open(path, 'wb') as pfile:
     pickle.dump(results_month_unforced, pfile)
 
-path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-CMIP-metrics-stand-False-month-False-unforced-False-joint-False'
-if late:
-    path = path+'-late'
+path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-CMIP-metrics-stand-False-month-False-unforced-False-joint-False-REGEN-mask'
 with open(path, 'wb') as pfile:
     pickle.dump(results_anomaly, pfile)
 
-path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-CMIP-metrics-stand-True-month-False-unforced-False-joint-False'
-if late:
-    path = path+'-late'
+path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-CMIP-metrics-stand-True-month-False-unforced-False-joint-False-REGEN-mask'
 with open(path, 'wb') as pfile:
     pickle.dump(results_stand, pfile)
 
-path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-CMIP-metrics-stand-True-month-False-unforced-True-joint-False'
-if late:
-    path = path+'-late'
+path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-CMIP-metrics-stand-True-month-False-unforced-True-joint-False-REGEN-mask'
 with open(path, 'wb') as pfile:
     pickle.dump(results_unforced, pfile)
