@@ -233,7 +233,7 @@ if __name__ == '__main__':
             n_members = model[vid].shape[0]
             model_pcs = []
             for im in range(n_members):
-                ds_in = model[vid].isel(member=im).sel(time=slice(str(pc_start)+'-01-01', str(pc_end+1)+'-01-01'))
+                ds_in = model[vid].isel(member=im).sel(time=slice(str(start_year)+'-01-01', '2023-01-01'))
                 ds_in = ds_in.transpose('time', 'lon', 'lat')
                 ds_in = ds_in * np.tile(np.expand_dims(missing_data, axis=0), (ds_in.shape[0], 1, 1))
                 month_data = []
@@ -241,7 +241,7 @@ if __name__ == '__main__':
                     ds_in_month = ds_in.sel(time=ds_in.time.dt.month==month)
                     ds_in_month = ds_in_month-ds_in_month.mean(dim='time')
                     month_data.append(ds_in_month.data)
-                month_pc = solver.projectField(month_data, neofs=5)
+                month_pc = solver.projectField(month_data, neofs=5).sel(time=slice(str(pc_start)+'-01-01', str(pc_end+1)+'-01-01'))
                 model_pcs.append(month_pc)
             # model_pcs = xr.concat(model_pcs, dim='member')
             all_pcs.append(model_pcs)
@@ -258,7 +258,7 @@ if __name__ == '__main__':
             n_members = model[vid].shape[0]
             model_pcs = []
             for im in range(n_members):
-                ds_in = model[vid].isel(member=im).sel(time=slice(str(pc_start)+'-01-01', str(pc_end+1)+'-01-01'))
+                ds_in = model[vid].isel(member=im).sel(time=slice(str(start_year)+'-01-01', '2023-01-01'))
                 ds_in = ds_in.transpose('time', 'lon', 'lat')
                 ds_in = ds_in * np.tile(np.expand_dims(missing_data, axis=0), (ds_in.shape[0], 1, 1))
                 month_pcs = []
@@ -266,7 +266,7 @@ if __name__ == '__main__':
                     ds_in_month = ds_in.sel(time=ds_in.time.dt.month==month)
                     ds_in_month = ds_in_month-ds_in_month.mean(dim='time')
                     solver = solvers[month-1]
-                    month_pc = solver.projectField(ds_in_month, neofs=5)
+                    month_pc = solver.projectField(ds_in_month, neofs=5).sel(time=slice(str(pc_start)+'-01-01', str(pc_end+1)+'-01-01'))
                     month_pcs.append(month_pc)
                 month_pcs = xr.concat(month_pcs, dim='time')
                 month_pcs = month_pcs.sortby('time')
@@ -288,21 +288,23 @@ if __name__ == '__main__':
             n_members = model[vid].shape[0]
             model_pcs = []
             for im in range(n_members):
-                ds_in = model[vid].isel(member=im).sel(time=slice(str(pc_start)+'-01-01', str(pc_end+1)+'-01-01'))
+                ds_in = model[vid].isel(member=im).sel(time=slice(str(start_year)+'-01-01', '2023-01-01'))
                 ds_in = ds_in.transpose('time', 'lon', 'lat')
                 ds_in = ds_in * np.tile(np.expand_dims(missing_data, axis=0), (ds_in.shape[0], 1, 1))
                 ds_in = ds_in - ds_in.mean(dim='time')
-                pse_pc = solver.projectField(ds_in, neofs=5)
+                pse_pc = solver.projectField(ds_in, neofs=5).sel(time=slice(str(pc_start)+'-01-01', str(pc_end+1)+'-01-01'))
                 model_pcs.append(pse_pc)
             model_pcs = xr.concat(model_pcs, dim='member')
             all_pcs.append(model_pcs)
     
     record = {'solver': solvers, 
-              'pc': pc_record, 'unforced_list':un_forced_list, 'all_pcs':all_pcs}
+              'pc': pc_record, 'unforced_list':un_forced_list, 'all_pcs':all_pcs} 
+    # all_pcs: cmip pseudopc
+    # pc_record: solver pc. 
     
     if unforced:
         record['unforced_std'] = un_forced_std # this is the unforced anomaly std. used to normalize obs.  
-    
+        
     path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(start_year)+'_2022/'
     if not os.path.exists(path):
         os.makedirs(path)
@@ -310,5 +312,6 @@ if __name__ == '__main__':
         pickle.dump(solvers, pfile)
     with open(path+variable+'-record-stand-'+str(stand)+'-month-'+str(month_bool)+'-unforced-'+str(unforced)+'-joint-'+str(joint), 'wb') as pfile:
         pickle.dump(record, pfile)
-    
+    if unforced:
+        un_forced_std.to_netcdf(path+variable+'_unforced_std.nc')
     

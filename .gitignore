@@ -1,0 +1,8 @@
+*.pyc
+*.nc
+*.out
+reconstructions
+reconstructions/*
+*.png
+*.html
+*.sh
