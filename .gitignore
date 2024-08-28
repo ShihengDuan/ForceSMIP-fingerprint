@@ -6,3 +6,4 @@ reconstructions/*
 *.png
 *.html
 *.sh
+*.ipynb_checkpoints*
