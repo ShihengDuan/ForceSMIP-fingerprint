@@ -14,13 +14,16 @@ import argparse
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--eof', type=int, default=1)
+    parser.add_argument('--eof_end', type=int, default=2016)
+    parser.add_argument('--less', type=int, default=0)
     args = vars(parser.parse_args())
     return args
 
 args = get_args()
 n_mode = args['eof']
-
+eof_end = args['eof_end']
 variable = 'pr'
+less = args['less']>0
 
 if variable == 'tos':
     cmip_var = 'tos'
@@ -39,22 +42,26 @@ elif variable=='pr':
     end_year = 2020
 
 print(variable, ' ', start_year, ' ', end_year, ' ', eof_start)
-with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022_cmip5/'+variable+'-record-stand-False-month-True-unforced-False', 'rb') as pfile:
+root_path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_'+str(eof_end)+'_cmip5/'
+if less:
+    root_path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_'+str(eof_end)+'_cmip5_less/'
+with open(root_path+variable+'-record-stand-False-month-True-unforced-False', 'rb') as pfile:
     record = pickle.load(pfile)
 solver_list_month = record['solver']
 pc_month = record['pc']
 
-with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022_cmip5/'+variable+'-record-stand-True-month-True-unforced-False', 'rb') as pfile:
+with open(root_path+variable+'-record-stand-True-month-True-unforced-False', 'rb') as pfile:
     record = pickle.load(pfile)
 solver_list_month_stand = record['solver']
 pc_month_stand = record['pc']
 
-with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022_cmip5/'+variable+'-record-stand-False-month-False-unforced-False', 'rb') as pfile:
+with open(root_path+variable+'-record-stand-False-month-False-unforced-False', 'rb') as pfile:
     record = pickle.load(pfile)
 solver = record['solver']
 pc_list = record['pc']
 
-with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022_cmip5/'+variable+'-record-stand-True-month-False-unforced-False', 'rb') as pfile:
+
+with open(root_path+variable+'-record-stand-True-month-False-unforced-False', 'rb') as pfile:
     record = pickle.load(pfile)
 solver_stand = record['solver']
 pc_list_stand = record['pc']
@@ -76,12 +83,15 @@ mswep = xc.open_dataset('/p/lustre3/shiduan/MSWEP/MSWEP-V280-Past-v20231102-monp
 mswep = mswep['__xarray_dataarray_variable__'].transpose('time', 'lon', 'lat')
 mswep = mswep.fillna(0)
 mswep = mswep.sel(time=slice('1983-01-01', '2021-01-01'))
+if eof_end<2020:
+    mswep = mswep.sel(time=slice('1983-01-01', str(eof_end)+'-12-31'))
 print(mswep.shape, ' ', mswep.time.data[-1])
 mswep_anomaly = mswep.groupby(mswep.time.dt.month)-mswep.groupby(mswep.time.dt.month).mean(dim='time')
 mswep_stand = mswep_anomaly.groupby(mswep_anomaly.time.dt.month)/mswep_anomaly.groupby(mswep_anomaly.time.dt.month).std(dim='time')
 
 picontrol, picontrol_std = get_picontrol_cmip5()
-
+end_year = np.min([eof_end, 2020])
+print('end_year: ', end_year)
 results_month = calculate_metrics_cmip5(n_mode=n_mode, obs=mswep_anomaly, missing_xa=missing_xa, 
     solver_list=solver_list_month, unforced_list=picontrol, pc_series=pc_all, month=True, 
     start_year=start_year, end_year=end_year)
@@ -105,8 +115,12 @@ results_raw= calculate_metrics_cmip5(n_mode=n_mode, obs=mswep_anomaly, missing_x
 
 if not os.path.exists('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022_cmip5/MSWEP/'):
     os.makedirs('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022_cmip5/MSWEP/')
+if less:
+    if not os.path.exists('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_'+str(eof_end)+'_cmip5_less/MSWEP/'):
+        os.makedirs('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_'+str(eof_end)+'_cmip5_less/MSWEP/')
 p = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022_cmip5/MSWEP/'
-
+if less:
+    p = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_'+str(eof_end)+'_cmip5_less/MSWEP/'
 
 path = p+variable+'-metrics-stand-False-month-True-unforced-False'
 if n_mode>1:

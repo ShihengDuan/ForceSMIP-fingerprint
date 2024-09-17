@@ -27,6 +27,8 @@ def get_args():
     parser.add_argument('--pc_start', type=int, default=1983)
     parser.add_argument('--pc_end', type=int, default=2020)
     parser.add_argument('--start_year', type=int, default=1979)
+    parser.add_argument('--eof_end', type=int, default=2022)
+    parser.add_argument('--less', type=int, default=0)
     args = vars(parser.parse_args())
     return args
 
@@ -63,29 +65,25 @@ if __name__ == '__main__':
     stand = stand>0
     month = args['month']
     month_bool = month>0
-    
+    eof_end = args['eof_end']
     unforced = args['unforced']
     unforced = unforced>0
     print('Month: ', month_bool, ' stand: ', stand,  ' unforced: ', unforced)
     if unforced and not stand:
         sys.exit("NO Such combination")
-    
+    less = args['less']>0
     pc_start = args['pc_start']
     pc_end = args['pc_end']
     print('CMIP pseudo-pc start and end: ', pc_start, pc_end)
 
-    # models = ['CESM2', 'MIROC6', 'MPI-ESM1-2-LR', 'MIROC-ES2L', 'CanESM5']
-    root_dir = "/p/lustre3/shiduan/ForceSMIP/CMIP5"  # path to forcesmip data (NCAR)
+    root_dir = "/p/lustre3/shiduan/ForceSMIP/CMIP5"
     ncvar = variable  # variable to be used: pr, psl, tas, zmta, tos, siconc, monmaxpr, monmaxtasmax, monmintasmin
     vid = cmipVar[ncvar]  # the variable id in the netcdf file differs – this maps to the standard CMIP variable name
     start_year = args['start_year']
-    reference_period = (str(start_year)+"-01-01", "2023-01-01") # climatological period (for anomaly calculations)
+    reference_period = (str(start_year)+"-01-01", str(eof_end+1)+"-01-01") # climatological period (for anomaly calculations)
     print(ncvar)
     print(vid)
-    # print(models)
-    # choose evaluation data
-    eval_tier = "Tier1"  # Tier1, Tier2, or Tier3
-    tv_time_period = (str(start_year)+"-01-01", "2023-01-01")
+    tv_time_period = (str(start_year)+"-01-01", str(eof_end+1)+"-01-01")
     # get training models
     files = glob.glob('/p/lustre3/shiduan/ForceSMIP/CMIP5/*')
     models = [p.split('/')[-1] for p in files]
@@ -108,6 +106,8 @@ if __name__ == '__main__':
         count = 0
         # initialize model ensemble xarray dataset
         ds_model = None
+        if less: # less ensemble members, but keep all_models
+            mfiles = mfiles[:1]
         for im, file in enumerate(mfiles):
             # print member progress
             print('.', end='')
@@ -118,7 +118,7 @@ if __name__ == '__main__':
                 ds = ds.bounds.add_missing_bounds(axes=['T'])
                 ds = ds.squeeze()
             
-                if len(ds['time'])>480:
+                if len(ds['time'])>12*(eof_end-start_year):
                     ds['__xarray_dataarray_variable__'] = ds['__xarray_dataarray_variable__']*86400
                     # calculate departures (relative to user-specified reference time period)
                     ds = ds.temporal.departures('__xarray_dataarray_variable__', freq='month', 
@@ -128,8 +128,6 @@ if __name__ == '__main__':
                     else:
                         if stand and not unforced: # stand with month std and do not use unforced component. 
                             ds = ds.groupby(ds.time.dt.month)/ds.groupby(ds.time.dt.month).std(dim='time')
-                            # ds = ds.where(np.isinfite(ds), np.NAN)
-                            # ds = ds.fillna()
                             ds = ds.where(ds.apply(np.isfinite)).fillna(0.0)
                         count += 1
                         
@@ -146,6 +144,8 @@ if __name__ == '__main__':
                             ds_model = ds
                         else:
                             ds_model = xr.concat((ds_model, ds), dim='member')
+                else:
+                    print('Time period is not long enough')
             except:
                 print('exception')      
             
@@ -212,7 +212,8 @@ if __name__ == '__main__':
                 n_members = 1
             model_pcs = []
             for im in range(n_members):
-                ds_in = model['__xarray_dataarray_variable__'].isel(member=im).sel(time=slice(str(start_year)+'-01-01', str(pc_end+1)+'-01-01'))
+                ds_in = model['__xarray_dataarray_variable__'].isel(member=im).sel(
+                    time=slice(str(start_year)+'-01-01', str(eof_end+1)+'-01-01'))
                 ds_in = ds_in.transpose('time', 'lon', 'lat')
                 ds_in = ds_in * np.tile(np.expand_dims(missing_data, axis=0), (ds_in.shape[0], 1, 1))
                 month_pcs = []
@@ -247,7 +248,8 @@ if __name__ == '__main__':
                 n_members = 1
             model_pcs = []
             for im in range(n_members):
-                ds_in = model['__xarray_dataarray_variable__'].isel(member=im).sel(time=slice(str(start_year)+'-01-01', str(pc_end+1)+'-01-01'))
+                ds_in = model['__xarray_dataarray_variable__'].isel(member=im).sel(
+                    time=slice(str(start_year)+'-01-01', str(eof_end+1)+'-01-01'))
                 ds_in = ds_in.transpose('time', 'lon', 'lat')
                 ds_in = ds_in * np.tile(np.expand_dims(missing_data, axis=0), (ds_in.shape[0], 1, 1))
                 ds_in = ds_in - ds_in.mean(dim='time')
@@ -262,13 +264,13 @@ if __name__ == '__main__':
     '''if unforced:
         record['unforced_std'] = un_forced_std # this is the unforced anomaly std. used to normalize obs.  '''
     
-    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(start_year)+'_2022_cmip5/'
+    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(start_year)+'_'+str(eof_end)+'_cmip5/'
+    if less:
+        path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(start_year)+'_'+str(eof_end)+'_cmip5_less/'
     if not os.path.exists(path):
         os.makedirs(path)
     with open(path+variable+'-solver-stand-'+str(stand)+'-month-'+str(month_bool)+'-unforced-'+str(unforced), 'wb') as pfile:
         pickle.dump(solvers, pfile)
     with open(path+variable+'-record-stand-'+str(stand)+'-month-'+str(month_bool)+'-unforced-'+str(unforced), 'wb') as pfile:
         pickle.dump(record, pfile)
-    '''if unforced:
-        un_forced_std.to_netcdf(path+variable+'_unforced_std.nc')
-    '''
+    
