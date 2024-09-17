@@ -1,32 +1,21 @@
-import time as clocktime
-import glob
-import xcdat as xc
 import xarray as xr
 import numpy as np
-import os
 import pickle
-
-# principal component analysis
-from eofs.xarray import Eof
-
-from matplotlib import pyplot as plt
-import cartopy
-from matplotlib import colors
-import matplotlib as mpl
-from utils import get_slope
 
 import argparse
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--variable', type=str, choices=['monmaxpr', 'pr', 'tos'])
+    parser.add_argument('--variable', type=str, choices=['monmaxpr', 'pr', 'tos'], default='pr')
     parser.add_argument('--late', type=int, default=0)
+    parser.add_argument('--eof', type=int, default=1)
     args = vars(parser.parse_args())
     return args
 
 args = get_args()
 variable = args['variable']
 late = args['late']
+n_mode = args['eof']
 # start_year = args['start_year']
 # end_year = args['end_year']
 if variable == 'tos':
@@ -111,8 +100,32 @@ else:
     missing_xa = xr.where(np.isnan(mask.tas.isel(time=0)), np.nan, 1)
 
 
-def calculate_metrics_cmip(solver_list, cmip_pcs, unforced_list, pc_series, month=False):
-    pc1 = pc_series.isel(mode=0).sel(time=slice(str(start_year)+'-01-01', str(end_year+1)+'-01-01'))
+def calculate_metrics_cmip(solver_list, cmip_pcs, unforced_list, pc_series, month=False, n_mode=1):
+    # cmip_pcs: cmip6 pseudo pcs
+    # pc_series: solver pc. 
+    pc1 = pc_series.isel(mode=n_mode-1)
+    if month:
+        reversed_month = []
+        reorder_pc1 = []
+        for month in range(1, 13):
+            pc1_month = pc1.sel(time=pc1.time.dt.month==month) # reversed based on solver pc. 
+            m, b = np.polyfit(np.arange(pc1_month.shape[0]), pc1_month, deg=1)
+            if m<0: 
+                pc1_month = -pc1_month
+                reversed_month.append(month)
+            reorder_pc1.append(pc1_month)
+        pc1 = xr.concat(reorder_pc1, dim='time')
+        print('reversed_month: ', reversed_month)
+        pc1 = pc1.sortby('time')
+    else:
+        m, b = np.polyfit(np.arange(pc1.shape[0]), pc1, deg=1)
+        if m<0:
+            reverse = True
+            pc1 = -pc1
+            print('Reverse')
+        else:
+            reverse = False
+    pc1 = pc1.sel(time=slice(str(start_year)+'-01-01', str(end_year+1)+'-01-01'))
     timescales = np.arange(12, (end_year+1-start_year)*12)
     pc_max = pc1.max().data
     pc_min = pc1.min().data
@@ -120,12 +133,29 @@ def calculate_metrics_cmip(solver_list, cmip_pcs, unforced_list, pc_series, mont
     # normalize cmip ensemble pcs. 
     cmip_psedupcs = []
     time = np.arange(len(pc1))
-    for model_pc in cmip_pcs:
-        model_pc = model_pc.sel(time=slice(str(start_year)+'-01-01', str(end_year+1)+'-01-01')).isel(mode=0)
-        model_pc = (model_pc-pc_min)/(pc_max-pc_min)
-        model_pc = model_pc*2-1 # -1 to 1 
-        cmip_psedupcs.append(model_pc)
-    
+    if not month:
+        for model_pc in cmip_pcs:
+            model_pc = model_pc.sel(time=slice(str(start_year)+'-01-01', str(end_year+1)+'-01-01')).isel(mode=n_mode-1)
+            if reverse:
+                model_pc = -model_pc
+            model_pc = (model_pc-pc_min)/(pc_max-pc_min)
+            model_pc = model_pc*2-1 # -1 to 1 
+            cmip_psedupcs.append(model_pc)
+    if month:
+        for model_pc in cmip_pcs:
+            reorder_pc = []
+            for month in range(1, 13):
+                model_pc_month = model_pc.sel(time=slice(str(start_year)+'-01-01', str(end_year+1)+'-01-01')).isel(mode=n_mode-1)
+                model_pc_month = model_pc_month.sel(time=model_pc_month.time.dt.month==month)
+                if month in reversed_month: # flip sign based on solver pc. 
+                    model_pc_month = -model_pc_month
+                reorder_pc.append(model_pc_month)
+            reorder_pc = xr.concat(reorder_pc, dim='time')
+            reorder_pc = reorder_pc.sortby('time')
+            reorder_pc = (reorder_pc-pc_min)/(pc_max-pc_min)
+            reorder_pc = reorder_pc*2-1 # -1 to 1 
+            cmip_psedupcs.append(reorder_pc)
+            
     noise_pcs = []
     for unforced in unforced_list:
         unforced = unforced[cmip_var].sel(time=slice(str(start_year)+'-01-01', str(end_year+1)+'-01-01'))
@@ -136,20 +166,24 @@ def calculate_metrics_cmip(solver_list, cmip_pcs, unforced_list, pc_series, mont
             if month:
                 noise_month = []
                 for month in range(1, 13):
-                    solver = solver_list_month[month-1]
+                    solver = solver_list[month-1]
                     ds_in_month = ds_in.sel(time=ds_in.time.dt.month==month)
                     # print(month, ' ', np.sum(np.isnan(ds_in)).data)
                     psd = solver.projectField(ds_in_month-ds_in_month.mean(dim='time'))
+                    if month in reversed_month:
+                        psd = -psd
                     noise_month.append(psd)
                 noise_month = xr.concat(noise_month, dim='time')
                 noise_month = noise_month.sortby('time')
-                noise_month = noise_month.isel(mode=0)
+                noise_month = noise_month.isel(mode=n_mode-1)
                 noise_month = (noise_month-pc_min)/(pc_max-pc_min)
                 noise_month = noise_month*2-1
                 noise_pcs.append(noise_month)
             else:
                 psd = solver_list[0].projectField(ds_in-ds_in.mean(dim='time'))
-                psd = psd.isel(mode=0)
+                psd = psd.isel(mode=n_mode-1)
+                if reverse:
+                    psd = -psd
                 psd = (psd-pc_max)/(pc_max-pc_min)
                 psd = psd*2-1
                 noise_pcs.append(psd)
@@ -183,7 +217,7 @@ def calculate_metrics_cmip(solver_list, cmip_pcs, unforced_list, pc_series, mont
     signal = {}
     
     # model 
-    pc1 = pc_series.isel(mode=0).sel(time=slice(str(start_year)+'-01-01', str(end_year+1)+'-01-01'))
+    # pc1 = pc_series.isel(mode=n_mode-1).sel(time=slice(str(start_year)+'-01-01', str(end_year+1)+'-01-01'))
     pc1_norm = (pc1-pc_min)/(pc_max-pc_min)
     pc1_norm = pc1_norm*2-1
     # loop over each timescale to compute the PC trend
@@ -233,55 +267,67 @@ def calculate_metrics_cmip(solver_list, cmip_pcs, unforced_list, pc_series, mont
     return results
 
 results_month = calculate_metrics_cmip(solver_list=solver_list_month, cmip_pcs=all_pcs_month, 
-                                       unforced_list=unforced_list_month, pc_series=pc_all, month=True)
+                                       unforced_list=unforced_list_month, pc_series=pc_all, month=True, n_mode=n_mode)
 
 results_month_stand = calculate_metrics_cmip(solver_list=solver_list_month_stand, cmip_pcs=all_pcs_month_stand, 
-                                       unforced_list=unforced_list_month_stand, pc_series=pc_all_stand, month=True)
+                                       unforced_list=unforced_list_month_stand, pc_series=pc_all_stand, month=True, n_mode=n_mode)
 
 results_month_unforced = calculate_metrics_cmip(solver_list=solver_list_month_unforced, cmip_pcs=all_pcs_month_unforced, 
-                                       unforced_list=unforced_list_month_unforced, pc_series=pc_all_unforced, month=True)
+                                       unforced_list=unforced_list_month_unforced, pc_series=pc_all_unforced, month=True, n_mode=n_mode)
 
 results_anomaly = calculate_metrics_cmip(solver_list=solver, cmip_pcs=all_pcs, 
-                                       unforced_list=unforced_list, pc_series=pc_list[0], month=False)
+                                       unforced_list=unforced_list, pc_series=pc_list[0], month=False, n_mode=n_mode)
 
 results_stand = calculate_metrics_cmip(solver_list=solver_stand, cmip_pcs=all_pcs_stand, 
-                                       unforced_list=unforced_list_stand, pc_series=pc_list_stand[0], month=False)
+                                       unforced_list=unforced_list_stand, pc_series=pc_list_stand[0], month=False, n_mode=n_mode)
 
 results_unforced = calculate_metrics_cmip(solver_list=solver_list_unforced, cmip_pcs=all_pcs_unforced, 
-                                       unforced_list=unforced_list_unforced, pc_series=pc_unforced[0], month=False)
+                                       unforced_list=unforced_list_unforced, pc_series=pc_unforced[0], month=False, n_mode=n_mode)
 
 path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-CMIP-metrics-stand-False-month-True-unforced-False-joint-False'
 if late:
     path = path+'-late'
+if n_mode>1:
+    path = path+'-n_mode-'+str(n_mode)
 with open(path, 'wb') as pfile:
     pickle.dump(results_month, pfile)
 
 path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-CMIP-metrics-stand-True-month-True-unforced-False-joint-False'
 if late:
     path = path+'-late'
+if n_mode>1:
+    path = path+'-n_mode-'+str(n_mode)
 with open(path, 'wb') as pfile:
     pickle.dump(results_month_stand, pfile)
 
 path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-CMIP-metrics-stand-True-month-True-unforced-True-joint-False'
 if late:
     path = path+'-late'
+if n_mode>1:
+    path = path+'-n_mode-'+str(n_mode)
 with open(path, 'wb') as pfile:
     pickle.dump(results_month_unforced, pfile)
 
 path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-CMIP-metrics-stand-False-month-False-unforced-False-joint-False'
 if late:
     path = path+'-late'
+if n_mode>1:
+    path = path+'-n_mode-'+str(n_mode)
 with open(path, 'wb') as pfile:
     pickle.dump(results_anomaly, pfile)
 
 path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-CMIP-metrics-stand-True-month-False-unforced-False-joint-False'
 if late:
     path = path+'-late'
+if n_mode>1:
+    path = path+'-n_mode-'+str(n_mode)
 with open(path, 'wb') as pfile:
     pickle.dump(results_stand, pfile)
 
 path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-CMIP-metrics-stand-True-month-False-unforced-True-joint-False'
 if late:
     path = path+'-late'
+if n_mode>1:
+    path = path+'-n_mode-'+str(n_mode)
 with open(path, 'wb') as pfile:
     pickle.dump(results_unforced, pfile)

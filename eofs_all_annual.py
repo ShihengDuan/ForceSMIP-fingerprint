@@ -22,10 +22,8 @@ def get_args():
     parser.add_argument('--variable', type=str, default='pr')
     parser.add_argument('--stand', type=int, default=0)
     parser.add_argument('--unforced', type=int, default=0)
-    parser.add_argument('--month', type=int, default=0)
-    parser.add_argument('--joint', type=int, default=0)
     parser.add_argument('--pc_start', type=int, default=1983)
-    parser.add_argument('--pc_end', type=int, default=2020)
+    parser.add_argument('--pc_end', type=int, default=2018)
     parser.add_argument('--start_year', type=int, default=1979)
     args = vars(parser.parse_args())
     return args
@@ -60,17 +58,11 @@ if __name__ == '__main__':
     args = get_args()
     variable = args['variable']
     stand = args['stand']
-    stand = stand>0
-    month = args['month']
-    month_bool = month>0
-    joint = args['joint']
-    joint = joint>0
+    stand = stand>0    
     unforced = args['unforced']
     unforced = unforced>0
-    print('Month: ', month_bool, ' stand: ', stand, ' joint: ', joint, ' unforced: ', unforced)
+    print(' stand: ', stand, ' unforced: ', unforced)
     if unforced and not stand:
-        sys.exit("NO Such combination")
-    if joint and not month_bool:
         sys.exit("NO Such combination")
     
     pc_start = args['pc_start']
@@ -161,7 +153,7 @@ if __name__ == '__main__':
         if not unforced: # Standardized or Anomaly. 
             un_forced = ds_model-ds_model_mean # unforced component. It is standardized. 
             un_forced_list.append(un_forced) # save in the unforced component list
-        if unforced: # use unforced to standardize. 
+        '''if unforced: # use unforced to standardize. 
             un_forced = ds_model-ds_model_mean # unforced component. It is NOT standardized. 
             un_forced_std_list.append(un_forced)
             std = un_forced.groupby(un_forced.time.dt.month).std(dim=['time', 'member'])
@@ -169,7 +161,7 @@ if __name__ == '__main__':
             ds_model_mean = ds_model.mean(dim='member', skipna=False) # standardize with unforced std. 
             un_forced = ds_model-ds_model_mean # unforced component. It is standardized. 
             un_forced_list.append(un_forced)
-            # ds_model_mean = ds_model.mean(dim='member', skipna=False) # get normalized ensemble mean. 
+            # ds_model_mean = ds_model.mean(dim='member', skipna=False) # get normalized ensemble mean. '''
         ds_model = ds_model.load() # member, time, lat, lon
         ds_model_mean = ds_model_mean.load()
         all_models.append(ds_model) 
@@ -177,9 +169,6 @@ if __name__ == '__main__':
         data_path = '/p/lustre2/shiduan/ForceSMIP/data/start-'+str(start_year)+'/'
         if not os.path.exists(data_path):
             os.makedirs(data_path)
-        if not joint and not month_bool: # no need to save multiple times. 
-            ds_model.to_netcdf(data_path+model+'-'+ncvar+'-stand-'+str(stand)+'-unforced-'+str(unforced)+'.nc')
-            un_forced.to_netcdf(data_path+model+'-unforced-'+ncvar+'-stand-'+str(stand)+'-unforced-'+str(unforced)+'.nc')
         del ds_model, ds_model_mean
         etime = clocktime.time()
         print()
@@ -216,101 +205,42 @@ if __name__ == '__main__':
     eofs_record = []
     pc_record = []
     variance = []
-    if month_bool and joint: # Multivariate month EOF
-        month_data = []
-        for month in range(1, 13):
-            ds_in = masked.sel(time=masked.time.dt.month==month)
-            month_data.append(ds_in.data)
-        solver = MultivariateEof(month_data, weights=[lat_weights.data for i in range(12)]) 
-        pcs = solver.pcs(npcs=5, pcscaling=0)
-        eofs_list = solver.eofs(neofs=5)
-        variance.append(solver.varianceFraction())
-        pc_record.append(pcs)
-        eofs_record.append(eofs_list)
-        solvers.append(solver)
-        all_pcs = []
-        for i, model in enumerate(all_models):
-            n_members = model[vid].shape[0]
-            model_pcs = []
-            for im in range(n_members):
-                ds_in = model[vid].isel(member=im).sel(time=slice(str(start_year)+'-01-01', '2023-01-01'))
-                ds_in = ds_in.transpose('time', 'lon', 'lat')
-                ds_in = ds_in * np.tile(np.expand_dims(missing_data, axis=0), (ds_in.shape[0], 1, 1))
-                month_data = []
-                for month in range(1, 13):
-                    ds_in_month = ds_in.sel(time=ds_in.time.dt.month==month)
-                    ds_in_month = ds_in_month-ds_in_month.mean(dim='time')
-                    month_data.append(ds_in_month.data)
-                month_pc = solver.projectField(month_data, neofs=5).sel(time=slice(str(pc_start)+'-01-01', str(pc_end+1)+'-01-01'))
-                model_pcs.append(month_pc)
-            # model_pcs = xr.concat(model_pcs, dim='member')
-            all_pcs.append(model_pcs)
-    elif month_bool and not joint: # do month by month EOF
-        for month in range(1, 13):
-            ds_in = masked.sel(time=masked.time.dt.month==month)
-            solver = Eof(ds_in, weights=lat_weights)
-            solvers.append(solver)
-            eofs_record.append(solver.eofs(neofs=5))
-            pc_record.append(solver.pcs(npcs=5, pcscaling=0))
-            variance.append(solver.varianceFraction())
-        all_pcs = []
-        for i, model in enumerate(all_models):
-            n_members = model[vid].shape[0]
-            model_pcs = []
-            for im in range(n_members):
-                ds_in = model[vid].isel(member=im).sel(time=slice(str(start_year)+'-01-01', '2023-01-01'))
-                ds_in = ds_in.transpose('time', 'lon', 'lat')
-                ds_in = ds_in * np.tile(np.expand_dims(missing_data, axis=0), (ds_in.shape[0], 1, 1))
-                month_pcs = []
-                for month in range(1, 13):
-                    ds_in_month = ds_in.sel(time=ds_in.time.dt.month==month)
-                    ds_in_month = ds_in_month-ds_in_month.mean(dim='time')
-                    solver = solvers[month-1]
-                    month_pc = solver.projectField(ds_in_month, neofs=5).sel(time=slice(str(pc_start)+'-01-01', str(pc_end+1)+'-01-01'))
-                    month_pcs.append(month_pc)
-                month_pcs = xr.concat(month_pcs, dim='time')
-                month_pcs = month_pcs.sortby('time')
-                model_pcs.append(month_pcs)
-            model_pcs = xr.concat(model_pcs, dim='member')
-            all_pcs.append(model_pcs)
-    else: # do all eofs
-        solver = Eof(masked, weights=lat_weights) 
-        pcs = solver.pcs(npcs=5, pcscaling=0)
-        pc_all = {}
-        pc_all['PC'] = pcs
-        pc_record.append(pcs)
-        eofs = solver.eofs(neofs=5)
-        variance.append(solver.varianceFraction())
-        eofs_record.append(eofs)
-        solvers.append(solver)
-        all_pcs = []
-        for i, model in enumerate(all_models):
-            n_members = model[vid].shape[0]
-            model_pcs = []
-            for im in range(n_members):
-                ds_in = model[vid].isel(member=im).sel(time=slice(str(start_year)+'-01-01', '2023-01-01'))
-                ds_in = ds_in.transpose('time', 'lon', 'lat')
-                ds_in = ds_in * np.tile(np.expand_dims(missing_data, axis=0), (ds_in.shape[0], 1, 1))
-                ds_in = ds_in - ds_in.mean(dim='time')
-                pse_pc = solver.projectField(ds_in, neofs=5).sel(time=slice(str(pc_start)+'-01-01', str(pc_end+1)+'-01-01'))
-                model_pcs.append(pse_pc)
-            model_pcs = xr.concat(model_pcs, dim='member')
-            all_pcs.append(model_pcs)
+    
+    solver = Eof(masked, weights=lat_weights) 
+    pcs = solver.pcs(npcs=5, pcscaling=0)
+    pc_all = {}
+    pc_all['PC'] = pcs
+    pc_record.append(pcs)
+    eofs = solver.eofs(neofs=5)
+    variance.append(solver.varianceFraction())
+    eofs_record.append(eofs)
+    solvers.append(solver)
+    all_pcs = []
+    for i, model in enumerate(all_models):
+        n_members = model[vid].shape[0]
+        model_pcs = []
+        for im in range(n_members):
+            ds_in = model[vid].isel(member=im).sel(time=slice(str(start_year)+'-01-01', '2023-01-01'))
+            ds_in = ds_in.transpose('time', 'lon', 'lat')
+            ds_in = ds_in * np.tile(np.expand_dims(missing_data, axis=0), (ds_in.shape[0], 1, 1))
+            ds_in = ds_in - ds_in.mean(dim='time')
+            pse_pc = solver.projectField(ds_in, neofs=5).sel(time=slice(str(pc_start)+'-01-01', str(pc_end+1)+'-01-01'))
+            model_pcs.append(pse_pc)
+        model_pcs = xr.concat(model_pcs, dim='member')
+        all_pcs.append(model_pcs)
     
     record = {'solver': solvers, 
-              'pc': pc_record, 'unforced_list':un_forced_list, 'all_pcs':all_pcs} 
-    # all_pcs: cmip pseudopc
-    # pc_record: solver pc. 
+              'pc': pc_record, 'unforced_list':un_forced_list, 'all_pcs':all_pcs}
     
     if unforced:
         record['unforced_std'] = un_forced_std # this is the unforced anomaly std. used to normalize obs.  
         
-    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(start_year)+'_2022/'
+    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(start_year)+'_2022_annual/'
     if not os.path.exists(path):
         os.makedirs(path)
-    with open(path+variable+'-solver-stand-'+str(stand)+'-month-'+str(month_bool)+'-unforced-'+str(unforced)+'-joint-'+str(joint), 'wb') as pfile:
+    with open(path+variable+'-solver-stand-'+str(stand)+'-unforced-'+str(unforced), 'wb') as pfile:
         pickle.dump(solvers, pfile)
-    with open(path+variable+'-record-stand-'+str(stand)+'-month-'+str(month_bool)+'-unforced-'+str(unforced)+'-joint-'+str(joint), 'wb') as pfile:
+    with open(path+variable+'-record-stand-'+str(stand)+'-unforced-'+str(unforced), 'wb') as pfile:
         pickle.dump(record, pfile)
     if unforced:
         un_forced_std.to_netcdf(path+variable+'_unforced_std.nc')
