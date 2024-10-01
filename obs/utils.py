@@ -258,7 +258,7 @@ def calculate_metrics_forcesmip(solver_list, obs, unforced_list, pc_series, miss
     # get noise and signal
     noise_pcs = []
     for unforced in unforced_list:
-        unforced = unforced[cmip_var].sel(time=slice(str(start_year)+'-01-01', str(end_year+1)+'-01-01'))
+        unforced = unforced[cmip_var].sel(time=slice(str(start_year)+'-01-01', str(2022)+'-12-31'))
         member = unforced.shape[0]
         for m in range(member):
             ds_in = unforced.isel(member=m)*missing_xa
@@ -275,13 +275,13 @@ def calculate_metrics_forcesmip(solver_list, obs, unforced_list, pc_series, miss
                     noise_month.append(psd)
                 noise_month = xr.concat(noise_month, dim='time')
                 noise_month = noise_month.sortby('time')
-                noise_month = noise_month.isel(mode=n_mode-1)
+                noise_month = noise_month.isel(mode=n_mode-1).sel(time=slice(str(start_year)+'-01-01', str(end_year+1)+'-01-01'))
                 noise_month = (noise_month-pc_min)/(pc_max-pc_min)
                 noise_month = noise_month*2-1
                 noise_pcs.append(noise_month)
             else:
                 psd = solver_list[0].projectField(ds_in-ds_in.mean(dim='time'))
-                psd = psd.isel(mode=n_mode-1)
+                psd = psd.isel(mode=n_mode-1).sel(time=slice(str(start_year)+'-01-01', str(end_year+1)+'-01-01'))
                 if reverse:
                     psd = -psd
                 psd = (psd-pc_max)/(pc_max-pc_min)
