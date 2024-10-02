@@ -129,6 +129,8 @@ print(gpcp.time)
 gpcp = gpcp["__xarray_dataarray_variable__"].transpose('time', 'lon', 'lat')
 gpcp = gpcp.fillna(0)
 gpcp = gpcp*missing_xa
+if regen_mask:
+    gpcp = gpcp.sel(time=slice('1983-01-01', '2016-12-31'))
 gpcp_anomaly = gpcp.groupby(gpcp.time.dt.month)-gpcp.groupby(gpcp.time.dt.month).mean(dim='time')
 gpcp_unforced = gpcp_anomaly.groupby(gpcp_anomaly.time.dt.month)/unforced_std['pr']
 gpcp_stand = gpcp_anomaly.groupby(gpcp_anomaly.time.dt.month)/gpcp_anomaly.groupby(gpcp_anomaly.time.dt.month).std(dim='time')
@@ -137,27 +139,33 @@ gpcp_stand = gpcp_anomaly.groupby(gpcp_anomaly.time.dt.month)/gpcp_anomaly.group
 
 
 results_month = calculate_metrics_forcesmip(obs=gpcp_anomaly,
-    solver_list=solver_list_month, unforced_list=unforced_list_month, pc_series=pc_all, month=True, n_mode=n_mode, missing_xa=missing_xa)
+    solver_list=solver_list_month, unforced_list=unforced_list_month, pc_series=pc_all, month=True, n_mode=n_mode, missing_xa=missing_xa,
+    start_year=start_year, end_year=end_year)
 
 results_month_stand = calculate_metrics_forcesmip(obs=gpcp_stand,
     solver_list=solver_list_month_stand, 
-    unforced_list=unforced_list_month_stand, pc_series=pc_all_stand, month=True, n_mode=n_mode, missing_xa=missing_xa)
+    unforced_list=unforced_list_month_stand, pc_series=pc_all_stand, month=True, n_mode=n_mode, missing_xa=missing_xa,
+    start_year=start_year, end_year=end_year)
 
 results_month_unforced = calculate_metrics_forcesmip(obs=gpcp_unforced,
     solver_list=solver_list_month_unforced, 
-    unforced_list=unforced_list_month_unforced, pc_series=pc_all_unforced, month=True, n_mode=n_mode, missing_xa=missing_xa)
+    unforced_list=unforced_list_month_unforced, pc_series=pc_all_unforced, month=True, n_mode=n_mode, missing_xa=missing_xa,
+    start_year=start_year, end_year=end_year)
 
 results_stand = calculate_metrics_forcesmip(obs=gpcp_stand,
     solver_list=solver_stand, 
-    unforced_list=unforced_list_stand, pc_series=pc_list_stand[0], month=False, n_mode=n_mode, missing_xa=missing_xa)
+    unforced_list=unforced_list_stand, pc_series=pc_list_stand[0], month=False, n_mode=n_mode, missing_xa=missing_xa,
+    start_year=start_year, end_year=end_year)
 
 results_unforced = calculate_metrics_forcesmip(obs=gpcp_unforced,
     solver_list=solver_list_unforced, 
-    unforced_list=unforced_list_unforced, pc_series=pc_unforced[0], month=False, n_mode=n_mode, missing_xa=missing_xa)
+    unforced_list=unforced_list_unforced, pc_series=pc_unforced[0], month=False, n_mode=n_mode, missing_xa=missing_xa,
+    start_year=start_year, end_year=end_year)
 
 results_raw= calculate_metrics_forcesmip(obs=gpcp_anomaly,
     solver_list=solver, 
-    unforced_list=unforced_list, pc_series=pc_list[0], month=False, n_mode=n_mode, missing_xa=missing_xa)
+    unforced_list=unforced_list, pc_series=pc_list[0], month=False, n_mode=n_mode, missing_xa=missing_xa,
+    start_year=start_year, end_year=end_year)
 
 if not os.path.exists('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/GPCP/'):
     os.makedirs('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/GPCP/')

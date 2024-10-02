@@ -5,6 +5,7 @@ import xarray as xr
 import numpy as np
 import os
 import pickle
+import argparse
 
 # principal component analysis
 from eofs.xarray import Eof
@@ -69,7 +70,7 @@ regen_unforced = regen_unforced*missing_xa
 results_month_unforced = calculate_metrics_forcesmip(obs=regen_unforced,
     solver_list=solver_list_month_unforced, 
     unforced_list=unforced_list_month_unforced, pc_series=pc_all_unforced, month=True, 
-    missing_xa=missing_xa, start_year=1983, end_year=2016)
+    missing_xa=missing_xa, start_year=1983, end_year=2016, n_mode=n_mode)
 
 with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-False-month-True-unforced-False-joint-False-REGEN-mask', 'rb') as pfile:
     record = pickle.load(pfile)
@@ -80,7 +81,7 @@ pc_all = xr.concat(pc_month, dim='time')
 pc_all = pc_all.sortby('time')
 results_month = calculate_metrics_forcesmip(obs=regen_anomaly,
     solver_list=solver_list_month, unforced_list=unforced_list_month, pc_series=pc_all, month=True,
-    missing_xa=missing_xa, start_year=1983, end_year=2016)
+    missing_xa=missing_xa, start_year=1983, end_year=2016, n_mode=n_mode)
 
 with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-True-unforced-False-joint-False-REGEN-mask', 'rb') as pfile:
     record = pickle.load(pfile)
@@ -93,7 +94,7 @@ pc_all_stand = pc_all_stand.sortby('time')
 results_month_stand = calculate_metrics_forcesmip(obs=regen_stand,
     solver_list=solver_list_month_stand, 
     unforced_list=unforced_list_month_stand, pc_series=pc_all_stand, month=True,
-    missing_xa=missing_xa, start_year=1983, end_year=2016)
+    missing_xa=missing_xa, start_year=1983, end_year=2016, n_mode=n_mode)
 
 with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-False-month-False-unforced-False-joint-False-REGEN-mask', 'rb') as pfile:
     record = pickle.load(pfile)
@@ -104,7 +105,7 @@ pc_list = record['pc']
 results_raw= calculate_metrics_forcesmip(obs=regen_anomaly,
     solver_list=solver, 
     unforced_list=unforced_list, pc_series=pc_list[0], month=False,
-    missing_xa=missing_xa, start_year=1983, end_year=2016)
+    missing_xa=missing_xa, start_year=1983, end_year=2016, n_mode=n_mode)
 
 
 with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-False-unforced-False-joint-False-REGEN-mask', 'rb') as pfile:
@@ -116,7 +117,7 @@ pc_list_stand = record['pc']
 results_stand = calculate_metrics_forcesmip(obs=regen_stand,
     solver_list=solver_stand, 
     unforced_list=unforced_list_stand, pc_series=pc_list_stand[0], month=False,
-    missing_xa=missing_xa, start_year=1983, end_year=2016)
+    missing_xa=missing_xa, start_year=1983, end_year=2016, n_mode=n_mode)
 
 
 with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-False-unforced-True-joint-False-REGEN-mask', 'rb') as pfile:
@@ -128,7 +129,7 @@ pc_unforced = record['pc']
 results_unforced = calculate_metrics_forcesmip(obs=regen_unforced,
     solver_list=solver_list_unforced, 
     unforced_list=unforced_list_unforced, pc_series=pc_unforced[0], month=False,
-    missing_xa=missing_xa, start_year=1983, end_year=2016)
+    missing_xa=missing_xa, start_year=1983, end_year=2016, n_mode=n_mode)
 
 
 

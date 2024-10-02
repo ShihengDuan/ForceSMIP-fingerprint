@@ -126,6 +126,8 @@ mswep = mswep['__xarray_dataarray_variable__'].transpose('time', 'lon', 'lat')
 mswep = mswep.fillna(0)
 mswep = mswep*missing_xa
 mswep = mswep.sel(time=slice('1983-01-01', '2021-01-01'))
+if regen_mask:
+    mswep = mswep.sel(time=slice('1983-01-01', '2016-12-31'))
 print(mswep.shape, ' ', mswep.time.data[-1])
 mswep_anomaly = mswep.groupby(mswep.time.dt.month)-mswep.groupby(mswep.time.dt.month).mean(dim='time')
 mswep_unforced = mswep_anomaly.groupby(mswep_anomaly.time.dt.month)/unforced_std['pr']
@@ -133,27 +135,33 @@ mswep_stand = mswep_anomaly.groupby(mswep_anomaly.time.dt.month)/mswep_anomaly.g
 
 
 results_month = calculate_metrics_forcesmip(n_mode=n_mode, obs=mswep_anomaly,
-    solver_list=solver_list_month, unforced_list=unforced_list_month, pc_series=pc_all, month=True, missing_xa=missing_xa)
+    solver_list=solver_list_month, unforced_list=unforced_list_month, pc_series=pc_all, month=True, missing_xa=missing_xa, 
+    start_year=start_year, end_year=end_year)
 
 results_month_stand = calculate_metrics_forcesmip(n_mode=n_mode, obs=mswep_stand,
     solver_list=solver_list_month_stand, 
-    unforced_list=unforced_list_month_stand, pc_series=pc_all_stand, month=True, missing_xa=missing_xa)
+    unforced_list=unforced_list_month_stand, pc_series=pc_all_stand, month=True, missing_xa=missing_xa, 
+    start_year=start_year, end_year=end_year)
 
 results_month_unforced = calculate_metrics_forcesmip(n_mode=n_mode, obs=mswep_unforced,
     solver_list=solver_list_month_unforced, 
-    unforced_list=unforced_list_month_unforced, pc_series=pc_all_unforced, month=True, missing_xa=missing_xa)
+    unforced_list=unforced_list_month_unforced, pc_series=pc_all_unforced, month=True, missing_xa=missing_xa, 
+    start_year=start_year, end_year=end_year)
 
 results_stand = calculate_metrics_forcesmip(n_mode=n_mode, obs=mswep_stand,
     solver_list=solver_stand, 
-    unforced_list=unforced_list_stand, pc_series=pc_list_stand[0], month=False, missing_xa=missing_xa)
+    unforced_list=unforced_list_stand, pc_series=pc_list_stand[0], month=False, missing_xa=missing_xa, 
+    start_year=start_year, end_year=end_year)
 
 results_unforced = calculate_metrics_forcesmip(n_mode=n_mode, obs=mswep_unforced,
     solver_list=solver_list_unforced, 
-    unforced_list=unforced_list_unforced, pc_series=pc_unforced[0], month=False, missing_xa=missing_xa)
+    unforced_list=unforced_list_unforced, pc_series=pc_unforced[0], month=False, missing_xa=missing_xa, 
+    start_year=start_year, end_year=end_year)
 
 results_raw= calculate_metrics_forcesmip(n_mode=n_mode, obs=mswep_anomaly,
     solver_list=solver, 
-    unforced_list=unforced_list, pc_series=pc_list[0], month=False, missing_xa=missing_xa)
+    unforced_list=unforced_list, pc_series=pc_list[0], month=False, missing_xa=missing_xa, 
+    start_year=start_year, end_year=end_year)
 
 
 if not os.path.exists('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/MSWEP/'):
