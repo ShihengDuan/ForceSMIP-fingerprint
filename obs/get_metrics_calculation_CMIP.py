@@ -9,6 +9,7 @@ def get_args():
     parser.add_argument('--variable', type=str, choices=['monmaxpr', 'pr', 'tos'], default='pr')
     parser.add_argument('--late', type=int, default=0)
     parser.add_argument('--eof', type=int, default=1)
+    parser.add_argument('--regen_mask', type=int, default=0) # REGEN land mask. 
     args = vars(parser.parse_args())
     return args
 
@@ -16,6 +17,7 @@ args = get_args()
 variable = args['variable']
 late = args['late']
 n_mode = args['eof']
+regen_mask = args['regen_mask']>0
 # start_year = args['start_year']
 # end_year = args['end_year']
 if variable == 'tos':
@@ -36,44 +38,65 @@ elif variable=='pr':
     eof_start = 1979
     start_year = 1983
     end_year = 2020
-
+    if regen_mask:
+        end_year = 2016 # land only pr. 
+    
 print(variable, ' ', start_year, ' ', end_year, ' ', eof_start)
-with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-False-month-True-unforced-False-joint-False', 'rb') as pfile:
+
+path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-False-month-True-unforced-False-joint-False'
+if regen_mask:
+    path = path+'-REGEN-mask'
+with open(path, 'rb') as pfile:
     record = pickle.load(pfile)
 solver_list_month = record['solver']
 unforced_list_month = record['unforced_list']
 pc_month = record['pc']
 all_pcs_month = record['all_pcs']
 
-with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-True-unforced-False-joint-False', 'rb') as pfile:
+path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-True-unforced-False-joint-False'
+if regen_mask:
+    path = path+'-REGEN-mask'
+with open(path, 'rb') as pfile:
     record = pickle.load(pfile)
 solver_list_month_stand = record['solver']
 unforced_list_month_stand = record['unforced_list']
 pc_month_stand = record['pc']
 all_pcs_month_stand = record['all_pcs']
 
-with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-False-month-False-unforced-False-joint-False', 'rb') as pfile:
+path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-False-month-False-unforced-False-joint-False'
+if regen_mask:
+    path = path+'-REGEN-mask'
+with open(path, 'rb') as pfile:
     record = pickle.load(pfile)
 solver = record['solver']
 unforced_list = record['unforced_list']
 pc_list = record['pc']
 all_pcs = record['all_pcs']
 
-with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-False-unforced-False-joint-False', 'rb') as pfile:
+path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-False-unforced-False-joint-False'
+if regen_mask:
+    path = path+'-REGEN-mask'
+with open(path, 'rb') as pfile:
     record = pickle.load(pfile)
 solver_stand = record['solver']
 unforced_list_stand = record['unforced_list']
 pc_list_stand = record['pc']
 all_pcs_stand = record['all_pcs']
 
-with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-True-unforced-True-joint-False', 'rb') as pfile:
+path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-True-unforced-True-joint-False'
+if regen_mask:
+    path = path+'-REGEN-mask'
+with open(path, 'rb') as pfile:
     record = pickle.load(pfile)
 solver_list_month_unforced = record['solver']
 unforced_list_month_unforced = record['unforced_list']
 pc_month_unforced = record['pc']
 all_pcs_month_unforced = record['all_pcs']
 
-with open('/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-False-unforced-True-joint-False', 'rb') as pfile:
+path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+variable+'-record-stand-True-month-False-unforced-True-joint-False'
+if regen_mask:
+    path = path+'-REGEN-mask'
+with open(path, 'rb') as pfile:
     record = pickle.load(pfile)
 solver_list_unforced = record['solver']
 unforced_list_unforced = record['unforced_list']
@@ -98,7 +121,11 @@ if variable=='tos':
 else:
     mask = xr.open_dataset('../nomask.nc')
     missing_xa = xr.where(np.isnan(mask.tas.isel(time=0)), np.nan, 1)
-
+if regen_mask:
+    maskfile = "/p/lustre1/shiduan/REGEN/REGEN_mask_forcesmip.nc"
+    missing_data_maskx = xr.open_dataset(maskfile)
+    missing_data = np.where(np.isnan(missing_data_maskx.p.transpose('lon', 'lat')), np.nan, 1)
+    missing_xa = xr.where(np.isnan(missing_data_maskx.p), np.nan, 1)
 
 def calculate_metrics_cmip(solver_list, cmip_pcs, unforced_list, pc_series, month=False, n_mode=1):
     # cmip_pcs: cmip6 pseudo pcs
@@ -158,7 +185,7 @@ def calculate_metrics_cmip(solver_list, cmip_pcs, unforced_list, pc_series, mont
             
     noise_pcs = []
     for unforced in unforced_list:
-        unforced = unforced[cmip_var].sel(time=slice(str(start_year)+'-01-01', str(end_year+1)+'-01-01'))
+        unforced = unforced[cmip_var].sel(time=slice(str(eof_start)+'-01-01', str(2022)+'-12-31')) # select the period as pseudo-PC
         member = unforced.shape[0]
         for m in range(member):
             ds_in = unforced.isel(member=m)*missing_xa
@@ -175,13 +202,13 @@ def calculate_metrics_cmip(solver_list, cmip_pcs, unforced_list, pc_series, mont
                     noise_month.append(psd)
                 noise_month = xr.concat(noise_month, dim='time')
                 noise_month = noise_month.sortby('time')
-                noise_month = noise_month.isel(mode=n_mode-1)
+                noise_month = noise_month.isel(mode=n_mode-1).sel(time=slice(str(start_year)+'-01-01', str(end_year)+'-12-31')) 
                 noise_month = (noise_month-pc_min)/(pc_max-pc_min)
                 noise_month = noise_month*2-1
                 noise_pcs.append(noise_month)
             else:
                 psd = solver_list[0].projectField(ds_in-ds_in.mean(dim='time'))
-                psd = psd.isel(mode=n_mode-1)
+                psd = psd.isel(mode=n_mode-1).sel(time=slice(str(start_year)+'-01-01', str(end_year)+'-12-31')) # slice the target period, as done for CMIP6. 
                 if reverse:
                     psd = -psd
                 psd = (psd-pc_max)/(pc_max-pc_min)
@@ -289,6 +316,8 @@ if late:
     path = path+'-late'
 if n_mode>1:
     path = path+'-n_mode-'+str(n_mode)
+if regen_mask:
+    path = path+'-REGEN-mask'
 with open(path, 'wb') as pfile:
     pickle.dump(results_month, pfile)
 
@@ -297,6 +326,8 @@ if late:
     path = path+'-late'
 if n_mode>1:
     path = path+'-n_mode-'+str(n_mode)
+if regen_mask:
+    path = path+'-REGEN-mask'
 with open(path, 'wb') as pfile:
     pickle.dump(results_month_stand, pfile)
 
@@ -305,6 +336,8 @@ if late:
     path = path+'-late'
 if n_mode>1:
     path = path+'-n_mode-'+str(n_mode)
+if regen_mask:
+    path = path+'-REGEN-mask'
 with open(path, 'wb') as pfile:
     pickle.dump(results_month_unforced, pfile)
 
@@ -313,6 +346,8 @@ if late:
     path = path+'-late'
 if n_mode>1:
     path = path+'-n_mode-'+str(n_mode)
+if regen_mask:
+    path = path+'-REGEN-mask'
 with open(path, 'wb') as pfile:
     pickle.dump(results_anomaly, pfile)
 
@@ -321,6 +356,8 @@ if late:
     path = path+'-late'
 if n_mode>1:
     path = path+'-n_mode-'+str(n_mode)
+if regen_mask:
+    path = path+'-REGEN-mask'
 with open(path, 'wb') as pfile:
     pickle.dump(results_stand, pfile)
 
@@ -329,5 +366,7 @@ if late:
     path = path+'-late'
 if n_mode>1:
     path = path+'-n_mode-'+str(n_mode)
+if regen_mask:
+    path = path+'-REGEN-mask'
 with open(path, 'wb') as pfile:
     pickle.dump(results_unforced, pfile)
