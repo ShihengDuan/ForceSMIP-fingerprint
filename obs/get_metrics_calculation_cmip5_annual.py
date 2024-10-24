@@ -17,13 +17,16 @@ from utils import get_slope
 
 import argparse
 
+
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--variable', type=str, choices=['monmaxpr', 'pr', 'tos'], default='pr')
+    parser.add_argument('--variable', type=str,
+                        choices=['monmaxpr', 'pr', 'tos'], default='pr')
     parser.add_argument('--late', type=int, default=0)
     parser.add_argument('--eof', type=int, default=1)
     args = vars(parser.parse_args())
     return args
+
 
 args = get_args()
 variable = args['variable']
@@ -39,12 +42,12 @@ if variable == 'tos':
     if late:
         start_year = 1979
         eof_start = 1979
-elif variable=='monmaxpr':
+elif variable == 'monmaxpr':
     cmip_var = 'pr'
     eof_start = 1979
     start_year = 1980
     end_year = 2020
-elif variable=='pr':
+elif variable == 'pr':
     cmip_var = 'pr'
     eof_start = 1979
     start_year = 1983
@@ -66,7 +69,7 @@ pc_list_stand = record['pc']
 all_pcs_stand = record['all_pcs']
 
 
-if variable=='tos':
+if variable == 'tos':
     mask = xr.open_dataset('../maskland.nc')
     missing_xa = xr.where(np.isnan(mask.tos.isel(time=0)), np.nan, 1)
 else:
@@ -89,7 +92,7 @@ for file in files:
     ds = ds.temporal.group_average('pr', freq='year')
     ds = ds['pr']*86400
     ds = ds-ds.mean(dim='time')
-    if np.sum(np.isnan(ds))==0:
+    if np.sum(np.isnan(ds)) == 0:
         picontrol.append(ds)
         ds_std = ds/ds.std(dim='time')
         picontrol_std.append(ds_std)
@@ -97,34 +100,37 @@ for file in files:
         print(file, ' NAN')
 print(len(picontrol), ' ', len(picontrol_std))
 
+
 def calculate_metrics_cmip(solver_list, cmip_pcs, unforced_list, pc_series, n_mode=1):
     # cmip_pcs: cmip5 models pseudo pcs
-    # pc_series: solver pc. 
+    # pc_series: solver pc.
     pc1 = pc_series.isel(mode=n_mode-1)
     m, b = np.polyfit(np.arange(pc1.shape[0]), pc1, deg=1)
-    if m<0:
+    if m < 0:
         pc1 = -pc1
-        reverse=True
+        reverse = True
         print('reverse')
     else:
-        reverse=False
+        reverse = False
 
-    pc1 = pc1.sel(time=slice(str(start_year)+'-01-01', str(end_year+1)+'-01-01'))
+    pc1 = pc1.sel(time=slice(str(start_year) +
+                  '-01-01', str(end_year+1)+'-01-01'))
     timescales = np.arange(5, (end_year+1-start_year))
     pc_max = pc1.max().data
     pc_min = pc1.min().data
     print(pc_max, ' ', pc_min)
-    # normalize cmip ensemble pcs. 
+    # normalize cmip ensemble pcs.
     cmip_psedupcs = []
     time = np.arange(len(pc1))
     for model_pc in cmip_pcs:
-        model_pc = model_pc.sel(time=slice(str(start_year)+'-01-01', str(end_year+1)+'-01-01')).isel(mode=n_mode-1)
+        model_pc = model_pc.sel(time=slice(
+            str(start_year)+'-01-01', str(end_year+1)+'-01-01')).isel(mode=n_mode-1)
         model_pc = (model_pc-pc_min)/(pc_max-pc_min)
-        model_pc = model_pc*2-1 # -1 to 1 
+        model_pc = model_pc*2-1  # -1 to 1
         if reverse:
             model_pc = -model_pc
         cmip_psedupcs.append(model_pc)
-       
+
     noise_pcs = []
     for unforced in unforced_list:
         ds_in = unforced*missing_xa
@@ -139,7 +145,7 @@ def calculate_metrics_cmip(solver_list, cmip_pcs, unforced_list, pc_series, n_mo
         # print('psd: ', psd)
     print(len(noise_pcs), ' ', len(unforced_list))
     # get noise strength
-    
+
     # initialize noise time series dictionary
     noise = {}
     # loop over timescales
@@ -166,8 +172,8 @@ def calculate_metrics_cmip(solver_list, cmip_pcs, unforced_list, pc_series, n_mo
         noise[nyears] = it_noise
     # get signal and obs strength
     signal = {}
-    
-    # model 
+
+    # model
     # pc1 = pc_series.isel(mode=n_mode-1).sel(time=slice(str(start_year)+'-01-01', str(end_year+1)+'-01-01'))
     pc1_norm = (pc1-pc_min)/(pc_max-pc_min)
     pc1_norm = pc1_norm*2-1
@@ -180,7 +186,8 @@ def calculate_metrics_cmip(solver_list, cmip_pcs, unforced_list, pc_series, n_mo
         sample_inds = np.arange(0, nyears)
         # compute the trend
         time = np.arange(len(pc1_norm))
-        m, b = np.polyfit(time[sample_inds], pc1_norm.isel(time=sample_inds), 1)
+        m, b = np.polyfit(time[sample_inds],
+                          pc1_norm.isel(time=sample_inds), 1)
         # store the trend (signal)
         signal[nyears] = m
         n = np.std(noise[nyears])
@@ -188,7 +195,7 @@ def calculate_metrics_cmip(solver_list, cmip_pcs, unforced_list, pc_series, n_mo
         sn.append(m/n)
         s_list.append(m)
         n_list.append(n)
-    
+
     # get noise and signal
     model_results = {}
     for i, model_pcs in enumerate(cmip_psedupcs):
@@ -198,46 +205,51 @@ def calculate_metrics_cmip(solver_list, cmip_pcs, unforced_list, pc_series, n_mo
         for nyears in timescales:
             sample_inds = np.arange(0, nyears)
             # print(time[sample_inds].shape, model_pcs.isel(time=sample_inds).transpose('time', 'member'))
-            m, b = np.polyfit(time[sample_inds], model_pcs.isel(time=sample_inds).transpose('time', 'member'), 1)
+            m, b = np.polyfit(time[sample_inds], model_pcs.isel(
+                time=sample_inds).transpose('time', 'member'), 1)
             # model_signal[nyears] = m # ensemble members
-            model_signal.append(np.expand_dims(m, axis=0)) # 1, members
+            model_signal.append(np.expand_dims(m, axis=0))  # 1, members
             n = np.std(noise[nyears])
             # model_sn[nyears] = m/n
             model_sn.append(np.expand_dims(m/n, axis=0))
-        model_signal = np.concatenate(model_signal, axis=0) # time, ensemble
+        model_signal = np.concatenate(model_signal, axis=0)  # time, ensemble
         model_sn = np.concatenate(model_sn, axis=0)
-        model_signal = xr.DataArray(model_signal, dims=['time', 'member'], 
-                                    coords={'time':timescales, 'member': np.arange(model_signal.shape[1])})
-        model_sn = xr.DataArray(model_sn, dims=['time', 'member'], 
-                                coords={'time':timescales, 'member': np.arange(model_sn.shape[1])})
-        model_results[i] = {'signal':model_signal, 'sn':model_sn}
-            
+        model_signal = xr.DataArray(model_signal, dims=['time', 'member'],
+                                    coords={'time': timescales, 'member': np.arange(model_signal.shape[1])})
+        model_sn = xr.DataArray(model_sn, dims=['time', 'member'],
+                                coords={'time': timescales, 'member': np.arange(model_sn.shape[1])})
+        model_results[i] = {'signal': model_signal, 'sn': model_sn}
+
     results = {
-        'sn': sn, 'signal':signal, 'noise':noise, 'n_list':n_list,
-        'model_results':model_results,  
-        'pc':pc1_norm, 'cmip_pcs': cmip_psedupcs, 
+        'sn': sn, 'signal': signal, 'noise': noise, 'n_list': n_list,
+        'model_results': model_results,
+        'pc': pc1_norm, 'cmip_pcs': cmip_psedupcs,
     }
     return results
 
 
-results_anomaly = calculate_metrics_cmip(solver_list=solver, cmip_pcs=all_pcs, 
-                                       unforced_list=picontrol, pc_series=pc_list[0], n_mode=n_mode)
+results_anomaly = calculate_metrics_cmip(solver_list=solver, cmip_pcs=all_pcs,
+                                         unforced_list=picontrol, pc_series=pc_list[0], n_mode=n_mode)
 
-results_stand = calculate_metrics_cmip(solver_list=solver_stand, cmip_pcs=all_pcs_stand, 
+results_stand = calculate_metrics_cmip(solver_list=solver_stand, cmip_pcs=all_pcs_stand,
                                        unforced_list=picontrol_std, pc_series=pc_list_stand[0], n_mode=n_mode)
 
-path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022_annual_cmip5/'+variable+'-CMIP-metrics-stand-False-unforced-False'
+path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/' + \
+    str(eof_start)+'_2022_annual_cmip5/'+variable + \
+    '-CMIP-metrics-stand-False-unforced-False'
 if late:
     path = path+'-late'
-if n_mode>1:
+if n_mode > 1:
     path = path+'-n_mode-'+str(n_mode)
 with open(path, 'wb') as pfile:
     pickle.dump(results_anomaly, pfile)
 
-path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022_annual_cmip5/'+variable+'-CMIP-metrics-stand-True-unforced-False'
+path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/' + \
+    str(eof_start)+'_2022_annual_cmip5/'+variable + \
+    '-CMIP-metrics-stand-True-unforced-False'
 if late:
     path = path+'-late'
-if n_mode>1:
+if n_mode > 1:
     path = path+'-n_mode-'+str(n_mode)
 with open(path, 'wb') as pfile:
     pickle.dump(results_stand, pfile)
