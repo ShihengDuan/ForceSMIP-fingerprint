@@ -27,6 +27,7 @@ def get_args():
     parser.add_argument('--pc_start', type=int, default=1983)
     parser.add_argument('--pc_end', type=int, default=2020)
     parser.add_argument('--start_year', type=int, default=1979)
+    parser.add_argument('--model', type=str, default='CESM2', choices=['CanESM5', 'CESM2', 'MIROC6', 'MIROC-ES2L', 'MPI-ESM1-2-LR'])
     args = vars(parser.parse_args())
     return args
 
@@ -76,8 +77,8 @@ if __name__ == '__main__':
     pc_start = args['pc_start']
     pc_end = args['pc_end']
     print('CMIP pseudo-pc start and end: ', pc_start, pc_end)
-
-    models = ['CESM2', 'MIROC6', 'MPI-ESM1-2-LR', 'MIROC-ES2L', 'CanESM5']
+    models = [args['model']]
+    # models = ['CESM2', 'MIROC6', 'MPI-ESM1-2-LR', 'MIROC-ES2L', 'CanESM5']
     root_dir = "/p/lustre3/shiduan/ForceSMIP"  # path to forcesmip data (NCAR)
     ncvar = variable  # variable to be used: pr, psl, tas, zmta, tos, siconc, monmaxpr, monmaxtasmax, monmintasmin
     vid = cmipVar[ncvar]  # the variable id in the netcdf file differs – this maps to the standard CMIP variable name
@@ -91,8 +92,8 @@ if __name__ == '__main__':
     tv_time_period = (str(start_year)+"-01-01", "2022-12-31")
     # get training models
     files = glob.glob(root_dir + '/Training/' + cmipTable[ncvar] + '/' + ncvar + '/*')
-    models = [p.split('/')[-1] for p in files]
-    models = sorted(models)
+    '''models = [p.split('/')[-1] for p in files]
+    models = sorted(models)'''
     if not os.path.exists('data/'):
         os.mkdir('data')
 
@@ -174,12 +175,7 @@ if __name__ == '__main__':
         ds_model_mean = ds_model_mean.load()
         all_models.append(ds_model) 
         model_mean_list.append(ds_model_mean)
-        data_path = '/p/lustre2/shiduan/ForceSMIP/data/start-'+str(start_year)+'/'
-        if not os.path.exists(data_path):
-            os.makedirs(data_path)
-        if not joint and not month_bool: # no need to save multiple times. 
-            ds_model.to_netcdf(data_path+model+'-'+ncvar+'-stand-'+str(stand)+'-unforced-'+str(unforced)+'.nc')
-            un_forced.to_netcdf(data_path+model+'-unforced-'+ncvar+'-stand-'+str(stand)+'-unforced-'+str(unforced)+'.nc')
+        
         del ds_model, ds_model_mean
         etime = clocktime.time()
         print()
@@ -202,8 +198,8 @@ if __name__ == '__main__':
         missing_xa = xr.where(np.isnan(missing_data_maskx.tos.isel(time=0)), np.nan, 1)
     del maskfile
     #missing_data.shape
-    index_array = xr.DataArray([0, 1, 2, 3, 4], dims="model") # change the index to pick up models
-    # index_array = xr.DataArray([0], dims="model") # change the index to pick up models
+    # index_array = xr.DataArray([0, 1, 2, 3, 4], dims="model") # change the index to pick up models
+    index_array = xr.DataArray([0], dims="model") # only choose one climate model. 
     ds_multi_model_mean5 = ds_multi_model.isel(model=index_array).mean(dim='model', skipna=False)
     ds_multi_model_mean5 = ds_multi_model_mean5.bounds.add_missing_bounds()
     print(ds_multi_model_mean5)
@@ -247,7 +243,7 @@ if __name__ == '__main__':
             all_pcs.append(model_pcs)
     elif month_bool and not joint: # do month by month EOF
         for month in range(1, 13):
-            ds_in = masked.sel(time=masked.time.dt.month==month) # this is solving EOF. 
+            ds_in = masked.sel(time=masked.time.dt.month==month)
             solver = Eof(ds_in, weights=lat_weights)
             solvers.append(solver)
             eofs_record.append(solver.eofs(neofs=5))
@@ -298,14 +294,12 @@ if __name__ == '__main__':
             all_pcs.append(model_pcs)
     
     record = {'solver': solvers, 
-              'pc': pc_record, 'unforced_list':un_forced_list, 'all_pcs':all_pcs} 
-    # all_pcs: cmip pseudopc
-    # pc_record: solver pc. 
+              'pc': pc_record, 'unforced_list':un_forced_list, 'all_pcs':all_pcs}
     
     if unforced:
         record['unforced_std'] = un_forced_std # this is the unforced anomaly std. used to normalize obs.  
         
-    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(start_year)+'_2022/'
+    path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(start_year)+'_2022/model_'+str(args['model'])+'/'
     if not os.path.exists(path):
         os.makedirs(path)
     with open(path+variable+'-solver-stand-'+str(stand)+'-month-'+str(month_bool)+'-unforced-'+str(unforced)+'-joint-'+str(joint), 'wb') as pfile:

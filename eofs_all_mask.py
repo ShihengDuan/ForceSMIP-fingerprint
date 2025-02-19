@@ -25,7 +25,7 @@ def get_args():
     parser.add_argument('--month', type=int, default=0)
     parser.add_argument('--joint', type=int, default=0)
     parser.add_argument('--pc_start', type=int, default=1983)
-    parser.add_argument('--pc_end', type=int, default=2018)
+    parser.add_argument('--pc_end', type=int, default=2016)
     parser.add_argument('--start_year', type=int, default=1979)
     args = vars(parser.parse_args())
     return args
@@ -233,7 +233,7 @@ if __name__ == '__main__':
             n_members = model[vid].shape[0]
             model_pcs = []
             for im in range(n_members):
-                ds_in = model[vid].isel(member=im).sel(time=slice(str(pc_start)+'-01-01', str(pc_end+1)+'-01-01'))
+                ds_in = model[vid].isel(member=im).sel(time=slice(str(pc_start)+'-01-01', str(pc_end)+'-12-31'))
                 ds_in = ds_in.transpose('time', 'lon', 'lat')
                 ds_in = ds_in * np.tile(np.expand_dims(missing_data, axis=0), (ds_in.shape[0], 1, 1))
                 month_data = []
@@ -258,7 +258,7 @@ if __name__ == '__main__':
             n_members = model[vid].shape[0]
             model_pcs = []
             for im in range(n_members):
-                ds_in = model[vid].isel(member=im).sel(time=slice(str(pc_start)+'-01-01', str(pc_end+1)+'-01-01'))
+                ds_in = model[vid].isel(member=im).sel(time=slice(str(pc_start)+'-01-01', str(pc_end)+'-12-31'))
                 ds_in = ds_in.transpose('time', 'lon', 'lat')
                 ds_in = ds_in * np.tile(np.expand_dims(missing_data, axis=0), (ds_in.shape[0], 1, 1))
                 month_pcs = []
@@ -288,7 +288,7 @@ if __name__ == '__main__':
             n_members = model[vid].shape[0]
             model_pcs = []
             for im in range(n_members):
-                ds_in = model[vid].isel(member=im).sel(time=slice(str(pc_start)+'-01-01', str(pc_end+1)+'-01-01'))
+                ds_in = model[vid].isel(member=im).sel(time=slice(str(pc_start)+'-01-01', str(pc_end)+'-12-31'))
                 ds_in = ds_in.transpose('time', 'lon', 'lat')
                 ds_in = ds_in * np.tile(np.expand_dims(missing_data, axis=0), (ds_in.shape[0], 1, 1))
                 ds_in = ds_in - ds_in.mean(dim='time')
