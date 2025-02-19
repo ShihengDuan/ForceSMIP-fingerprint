@@ -1,5 +1,5 @@
-Pattern-based fingerprint analysis using ForceSMIP dataset at monthly timesteps.   
-LLNL  
+Pattern-based fingerprint analysis using ForceSMIP dataset at monthly timesteps. Work at LLNL.    
+
 
 * ```eof-compare.ipynb```: EOF and PC plot for all variables.  
 * ```eofs_all_annual.py```: solving EOFs for annual timesteps; ForceSMIP.  
@@ -15,3 +15,6 @@ obs:
 * ```get_metrics_calculation_CMIP.py```: calculate signal, noise, SNR for CMIP simulations. 
 * ```enso-pr.ipynb```: Niño 3.4 with precipitation.  
 * ```PC-SN-OceanBasins.ipynb```: PC and SNR with respect to ocean basins.   
+
+
+Manuscript coming soon.   
