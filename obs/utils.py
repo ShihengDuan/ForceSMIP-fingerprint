@@ -43,12 +43,12 @@ def calculate_metrics_cmip5(solver_list, obs, unforced_list, pc_series, missing_
     if month:
         reversed_month = []
         reorder_pc1 = []
-        for month in range(1, 13):
-            pc1_month = pc1.sel(time=pc1.time.dt.month==month)
+        for m in range(1, 13):
+            pc1_month = pc1.sel(time=pc1.time.dt.month==m)
             m, b = np.polyfit(np.arange(pc1_month.shape[0]), pc1_month, deg=1)
             if m<0:
                 pc1_month = -pc1_month
-                reversed_month.append(month)
+                reversed_month.append(m)
             reorder_pc1.append(pc1_month)
         pc1 = xr.concat(reorder_pc1, dim='time')
         print('reversed_month: ', reversed_month)
@@ -69,12 +69,12 @@ def calculate_metrics_cmip5(solver_list, obs, unforced_list, pc_series, missing_
     # normalize cmip ensemble pcs. 
     if month:
         pseudo_pc_month = []
-        for month in range(1, 13):
+        for m in range(1, 13):
             # normalize 
-            solver = solver_list[month-1]
-            ds_in = obs.sel(time=obs.time.dt.month==month)
+            solver = solver_list[m-1]
+            ds_in = obs.sel(time=obs.time.dt.month==m)
             pseudo_pc = solver.projectField(ds_in-ds_in.mean(dim='time')).isel(mode=n_mode-1)
-            if month in reversed_month: # flip sign based on solver pc. 
+            if m in reversed_month: # flip sign based on solver pc. 
                 pseudo_pc = -pseudo_pc
             pseudo_pc_month.append(pseudo_pc)
         pseudo_pc = xr.concat(pseudo_pc_month, dim='time')
@@ -97,12 +97,12 @@ def calculate_metrics_cmip5(solver_list, obs, unforced_list, pc_series, missing_
         ds_in = ds_in.transpose('time', 'lon', 'lat')
         if month:
             noise_month = []
-            for month in range(1, 13):
-                solver = solver_list[month-1]
-                ds_in_month = ds_in.sel(time=ds_in.time.dt.month==month)
+            for m in range(1, 13):
+                solver = solver_list[m-1]
+                ds_in_month = ds_in.sel(time=ds_in.time.dt.month==m)
                 # print(month, ' ', np.sum(np.isnan(ds_in)).data)
                 psd = solver.projectField(ds_in_month-ds_in_month.mean(dim='time'))
-                if month in reversed_month:
+                if m in reversed_month:
                     psd = -psd
                 noise_month.append(psd)
             noise_month = xr.concat(noise_month, dim='time')
@@ -208,12 +208,12 @@ def calculate_metrics_forcesmip(solver_list, obs, unforced_list, pc_series, miss
     if month:
         reversed_month = []
         reorder_pc1 = []
-        for month in range(1, 13):
-            pc1_month = pc1.sel(time=pc1.time.dt.month==month)
+        for m in range(1, 13):
+            pc1_month = pc1.sel(time=pc1.time.dt.month==m)
             m, b = np.polyfit(np.arange(pc1_month.shape[0]), pc1_month, deg=1)
             if m<0:
                 pc1_month = -pc1_month
-                reversed_month.append(month)
+                reversed_month.append(m)
             reorder_pc1.append(pc1_month)
         pc1 = xr.concat(reorder_pc1, dim='time')
         print('reversed_month: ', reversed_month)
@@ -234,12 +234,12 @@ def calculate_metrics_forcesmip(solver_list, obs, unforced_list, pc_series, miss
     # normalize cmip ensemble pcs. 
     if month:
         pseudo_pc_month = []
-        for month in range(1, 13):
+        for m in range(1, 13):
             # normalize 
-            solver = solver_list[month-1]
-            ds_in = obs.sel(time=obs.time.dt.month==month)
+            solver = solver_list[m-1]
+            ds_in = obs.sel(time=obs.time.dt.month==m)
             pseudo_pc = solver.projectField(ds_in-ds_in.mean(dim='time')).isel(mode=n_mode-1)
-            if month in reversed_month: # flip sign based on solver pc. 
+            if m in reversed_month: # flip sign based on solver pc. 
                 pseudo_pc = -pseudo_pc
             pseudo_pc_month.append(pseudo_pc)
         pseudo_pc = xr.concat(pseudo_pc_month, dim='time')
@@ -265,12 +265,12 @@ def calculate_metrics_forcesmip(solver_list, obs, unforced_list, pc_series, miss
             ds_in = ds_in.transpose('time', 'lon', 'lat')
             if month:
                 noise_month = []
-                for month in range(1, 13):
-                    solver = solver_list[month-1]
-                    ds_in_month = ds_in.sel(time=ds_in.time.dt.month==month)
+                for mm in range(1, 13):
+                    solver = solver_list[mm-1]
+                    ds_in_month = ds_in.sel(time=ds_in.time.dt.month==mm)
                     # print(month, ' ', np.sum(np.isnan(ds_in)).data)
                     psd = solver.projectField(ds_in_month-ds_in_month.mean(dim='time'))
-                    if month in reversed_month:
+                    if mm in reversed_month:
                         psd = -psd
                     noise_month.append(psd)
                 noise_month = xr.concat(noise_month, dim='time')

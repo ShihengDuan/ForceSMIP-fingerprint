@@ -162,7 +162,8 @@ with open(f'/g/g92/shiduan/lustre2/ForceSMIP/EOF/modes_all/1979_2022/model_{mode
 with open(f'/g/g92/shiduan/lustre2/ForceSMIP/EOF/modes_all/1979_2022/model_{model}/pr-record-stand-True-month-True-unforced-False-joint-False', 'rb') as pfile:
     model_stand_month_record = pickle.load(pfile)
 
-
+# AllMonth, Anomaly
+print('AllMonth, Anomaly')
 results = calculate_metrics_forcesmip(model_record['solver'], model_record['unforced_list'], model_record['pc'][0], 
                                       missing_xa, month=False, n_mode=n_mode, start_year=start_year, end_year=end_year, cmip_var=variable)
 path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/' + \
@@ -175,6 +176,8 @@ if regen_mask:
 with open(path, 'wb') as pfile:
     pickle.dump(results, pfile)
 
+# AllMonth, StdAnomaly
+print('AllMonth, StdAnomaly')
 results = calculate_metrics_forcesmip(model_stand_record['solver'], model_stand_record['unforced_list'], model_stand_record['pc'][0], 
                                       missing_xa, month=False, n_mode=n_mode, start_year=start_year, end_year=end_year, cmip_var=variable)
 path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/' + \
@@ -187,3 +190,34 @@ if regen_mask:
 with open(path, 'wb') as pfile:
     pickle.dump(results, pfile)
 
+# MbyM, Anomaly
+print('MonthbyMonth, Anomaly')
+pc_all = xr.concat(model_month_record['pc'], dim='time')
+pc_all = pc_all.sortby('time')
+results = calculate_metrics_forcesmip(model_month_record['solver'], model_month_record['unforced_list'], pc_all, 
+                                      missing_xa, month=False, n_mode=n_mode, start_year=start_year, end_year=end_year, cmip_var=variable)
+path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/' + \
+    str(eof_start)+'_2022/model_'+str(model)+'/'+variable + \
+    '-CMIP-metrics-stand-False-month-True-unforced-False-joint-False'
+if n_mode > 1:
+    path = path+'-n_mode-'+str(n_mode)
+if regen_mask:
+    path = path+'-REGEN-mask'
+with open(path, 'wb') as pfile:
+    pickle.dump(results, pfile)
+
+# MbyM, StdAnomaly
+print('MonthbyMonth, StdAnomaly')
+pc_all = xr.concat(model_stand_month_record['pc'], dim='time')
+pc_all = pc_all.sortby('time')
+results = calculate_metrics_forcesmip(model_stand_month_record['solver'], model_stand_month_record['unforced_list'], pc_all, 
+                                      missing_xa, month=False, n_mode=n_mode, start_year=start_year, end_year=end_year, cmip_var=variable)
+path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/' + \
+    str(eof_start)+'_2022/model_'+str(model)+'/'+variable + \
+    '-CMIP-metrics-stand-True-month-True-unforced-False-joint-False'
+if n_mode > 1:
+    path = path+'-n_mode-'+str(n_mode)
+if regen_mask:
+    path = path+'-REGEN-mask'
+with open(path, 'wb') as pfile:
+    pickle.dump(results, pfile)
