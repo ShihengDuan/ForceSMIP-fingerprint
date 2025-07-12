@@ -6,18 +6,19 @@ import pickle
 
 import argparse
 
-def calculate_metrics_forcesmip(solver_list, unforced_list, pc_series, missing_xa, month=False, n_mode=1, start_year=1983, end_year=2020, cmip_var='pr'):
+def calculate_metrics_forcesmip(solver_list, unforced_list, pc_series, missing_xa, month=False, 
+                                n_mode=1, start_year=1983, end_year=2020, cmip_var='pr'):
     pc1 = pc_series.isel(mode=n_mode-1)
     if month:
         reversed_month = []
         reorder_pc1 = []
-        for month in range(1, 13):
-            pc1_month = pc1.sel(time=pc1.time.dt.month==month)
+        for m in range(1, 13):
+            pc1_month = pc1.sel(time=pc1.time.dt.month==m)
             # print(month, ' ', pc1_month)
-            m, b = np.polyfit(np.arange(pc1_month.shape[0]), pc1_month, deg=1)
-            if m<0:
+            k, b = np.polyfit(np.arange(pc1_month.shape[0]), pc1_month, deg=1)
+            if k<0:
                 pc1_month = -pc1_month
-                reversed_month.append(month)
+                reversed_month.append(m)
             reorder_pc1.append(pc1_month)
         pc1 = xr.concat(reorder_pc1, dim='time')
         print('reversed_month: ', reversed_month)
@@ -46,12 +47,12 @@ def calculate_metrics_forcesmip(solver_list, unforced_list, pc_series, missing_x
             ds_in = ds_in.transpose('time', 'lon', 'lat')
             if month:
                 noise_month = []
-                for month in range(1, 13):
-                    solver = solver_list[month-1]
-                    ds_in_month = ds_in.sel(time=ds_in.time.dt.month==month)
+                for m in range(1, 13):
+                    solver = solver_list[m-1]
+                    ds_in_month = ds_in.sel(time=ds_in.time.dt.month==m)
                     # print(month, ' ', np.sum(np.isnan(ds_in)).data)
                     psd = solver.projectField(ds_in_month-ds_in_month.mean(dim='time'))
-                    if month in reversed_month:
+                    if m in reversed_month:
                         psd = -psd
                     noise_month.append(psd)
                 noise_month = xr.concat(noise_month, dim='time')

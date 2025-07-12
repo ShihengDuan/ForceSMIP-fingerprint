@@ -3,6 +3,7 @@ import xarray as xr
 import numpy as np
 import os
 import pickle
+import pandas as pd
 
 from utils import calculate_metrics_forcesmip
 import argparse
@@ -42,7 +43,7 @@ path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+var
 if regen_mask:
     path = path+'-REGEN-mask'
 with open(path, 'rb') as pfile:
-    record = pickle.load(pfile)
+    record = pd.read_pickle(pfile)
 solver_list_month = record['solver']
 unforced_list_month = record['unforced_list']
 pc_month = record['pc']
@@ -52,7 +53,7 @@ path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+var
 if regen_mask:
     path = path+'-REGEN-mask'
 with open(path, 'rb') as pfile:
-    record = pickle.load(pfile)
+    record = pd.read_pickle(pfile)
 solver_list_month_stand = record['solver']
 unforced_list_month_stand = record['unforced_list']
 pc_month_stand = record['pc']
@@ -62,7 +63,7 @@ path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+var
 if regen_mask:
     path = path+'-REGEN-mask'
 with open(path, 'rb') as pfile:
-    record = pickle.load(pfile)
+    record = pd.read_pickle(pfile)
 solver = record['solver']
 unforced_list = record['unforced_list']
 pc_list = record['pc']
@@ -72,7 +73,7 @@ path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+var
 if regen_mask:
     path = path+'-REGEN-mask'
 with open(path, 'rb') as pfile:
-    record = pickle.load(pfile)
+    record = pd.read_pickle(pfile)
 solver_stand = record['solver']
 unforced_list_stand = record['unforced_list']
 pc_list_stand = record['pc']
@@ -82,7 +83,7 @@ path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+var
 if regen_mask:
     path = path+'-REGEN-mask'
 with open(path, 'rb') as pfile:
-    record = pickle.load(pfile)
+    record = pd.read_pickle(pfile)
 solver_list_month_unforced = record['solver']
 unforced_list_month_unforced = record['unforced_list']
 pc_month_unforced = record['pc']
@@ -92,7 +93,7 @@ path = '/p/lustre2/shiduan/ForceSMIP/EOF/modes_all/'+str(eof_start)+'_2022/'+var
 if regen_mask:
     path = path+'-REGEN-mask'
 with open(path, 'rb') as pfile:
-    record = pickle.load(pfile)
+    record = pd.read_pickle(pfile)
 solver_list_unforced = record['solver']
 unforced_list_unforced = record['unforced_list']
 pc_unforced = record['pc']
