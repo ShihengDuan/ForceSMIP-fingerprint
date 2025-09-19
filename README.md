@@ -1,7 +1,7 @@
 Pattern-based fingerprint analysis using ForceSMIP dataset at monthly timesteps. Work at LLNL.    
 
-
-* ```eof-compare.ipynb```: EOF and PC plot for all variables.  
+ 
+* ```eof-pr.ipynb```: EOF and PC just for precipitation.  
 * ```eofs_all_annual.py```: solving EOFs for annual timesteps; ForceSMIP.  
 * ```eofs_cmip5_annual.py```: solving EOFs for annual timesteps; CMIP5. 
 To be noted: PCs are not normalized in ```eofs*.py```. Normalization and flips are done in ```obs/```. 

@@ -45,8 +45,8 @@ def calculate_metrics_cmip5(solver_list, obs, unforced_list, pc_series, missing_
         reorder_pc1 = []
         for m in range(1, 13):
             pc1_month = pc1.sel(time=pc1.time.dt.month==m)
-            m, b = np.polyfit(np.arange(pc1_month.shape[0]), pc1_month, deg=1)
-            if m<0:
+            k, b = np.polyfit(np.arange(pc1_month.shape[0]), pc1_month, deg=1)
+            if k<0:
                 pc1_month = -pc1_month
                 reversed_month.append(m)
             reorder_pc1.append(pc1_month)
@@ -210,8 +210,8 @@ def calculate_metrics_forcesmip(solver_list, obs, unforced_list, pc_series, miss
         reorder_pc1 = []
         for m in range(1, 13):
             pc1_month = pc1.sel(time=pc1.time.dt.month==m)
-            m, b = np.polyfit(np.arange(pc1_month.shape[0]), pc1_month, deg=1)
-            if m<0:
+            k, b = np.polyfit(np.arange(pc1_month.shape[0]), pc1_month, deg=1)
+            if k<0:
                 pc1_month = -pc1_month
                 reversed_month.append(m)
             reorder_pc1.append(pc1_month)
@@ -233,6 +233,7 @@ def calculate_metrics_forcesmip(solver_list, obs, unforced_list, pc_series, miss
     print(pc_max, ' ', pc_min)
     # normalize cmip ensemble pcs. 
     if month:
+        print('Month is ', month)
         pseudo_pc_month = []
         for m in range(1, 13):
             # normalize 
@@ -258,6 +259,7 @@ def calculate_metrics_forcesmip(solver_list, obs, unforced_list, pc_series, miss
     # get noise and signal
     noise_pcs = []
     for unforced in unforced_list:
+        print('Month is ', month, ' for unforced')
         unforced = unforced[cmip_var].sel(time=slice(str(start_year)+'-01-01', str(2022)+'-12-31'))
         member = unforced.shape[0]
         for m in range(member):
